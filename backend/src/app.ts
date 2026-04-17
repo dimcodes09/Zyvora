@@ -1,37 +1,57 @@
-import express from "express";
-import type { Application, Request, Response, NextFunction } from "express";
-import userRoutes from "./routes/userRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
+import express from 'express';
+import type { Application } from 'express';
+
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+
+import { config } from './config/env.js';
+import { notFound, errorHandler } from './middleware/errorHandler.js';
+
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import healthRoutes from './routes/healthRoutes.js';
 
 const app: Application = express();
 
-// Body parser
-app.use(express.json());
+// ─── Security Middleware ───────────────────────────────────────
+app.use(helmet());
+app.use(cors());
 
-// Health check
-app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-});
+app.use(
+  rateLimit({
+    windowMs: config.rateLimit.windowMs,
+    max: config.rateLimit.max,
+    message: {
+      success: false,
+      message: 'Too many requests, please try again later.',
+    },
+  })
+);
 
-// Routes
-app.use("/api/users", userRoutes);
-app.use("/api/products", productRoutes); // ✅ MUST be before 404
+// ─── Logging ──────────────────────────────────────────────────
+if (config.env !== 'test') {
+  app.use(morgan(config.env === 'development' ? 'dev' : 'combined'));
+}
 
-// 404 (LAST)
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-});
+// ─── Body Parsing ─────────────────────────────────────────────
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Error handler
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err.message);
-  res.status(500).json({
-    success: false,
-    message:
-      process.env.NODE_ENV === "production"
-        ? "Internal server error"
-        : err.message,
-  });
-});
+// ─── Routes ───────────────────────────────────────────────────
+app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);     // ✅ keep this
+app.use('/api/orders', orderRoutes);  // ✅ keep this
+
+// ─── Error Handling ───────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
 
 export default app;
