@@ -5,7 +5,6 @@ import { AppError } from '../middleware/errorHandler.js';
 import type {
   RegisterBody,
   LoginBody,
-  AuthResponse,
   AuthRequest,
 } from '../types/auth.js';
 
@@ -18,30 +17,43 @@ export const register = async (
   try {
     const { name, email, password } = req.body;
 
+    // ✅ validation
     if (!name || !email || !password) {
       return next(new AppError('Name, email, and password are required.', 400));
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
+    // ✅ normalize email
+    const normalizedEmail = email.toLowerCase();
+
+    // ✅ check existing user
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return next(new AppError('An account with this email already exists.', 409));
     }
 
-    const user = await User.create({ name, email, password });
+    // ✅ create user
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      password,
+    });
 
+    // ✅ generate token
     const token = signToken(String(user._id), user.role);
 
-    const response: AuthResponse = {
+    // ✅ correct response format (frontend compatible)
+    res.status(201).json({
       success: true,
-      token,
-      user: {
-        id: String(user._id),
-        name: user.name,
-        email: user.email,
+      data: {
+        token,
+        user: {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+        },
       },
-    };
+    });
 
-    res.status(201).json(response);
   } catch (error) {
     next(error);
   }
@@ -56,48 +68,57 @@ export const login = async (
   try {
     const { email, password } = req.body;
 
+    // ✅ validation
     if (!email || !password) {
       return next(new AppError('Email and password are required.', 400));
     }
 
-    const user = await User.findByEmail(email);
+    const normalizedEmail = email.toLowerCase();
+
+    // ✅ find user
+    const user = await User.findByEmail(normalizedEmail);
 
     if (!user || !(await user.comparePassword(password))) {
       return next(new AppError('Invalid email or password.', 401));
     }
 
+    // ✅ token
     const token = signToken(String(user._id), user.role);
 
-    const response: AuthResponse = {
+    // ✅ consistent response
+    res.status(200).json({
       success: true,
-      token,
-      user: {
-        id: String(user._id),
-        name: user.name,
-        email: user.email,
+      data: {
+        token,
+        user: {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+        },
       },
-    };
+    });
 
-    res.status(200).json(response);
   } catch (error) {
     next(error);
   }
 };
 
-// ─── GET /api/auth/me (protected) ────────────────────────────
+// ─── GET /api/auth/me ─────────────────────────────────────────
 export const getMe = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = (req as AuthRequest).userId; // ✅ correct way
+    const userId = (req as AuthRequest).userId;
 
     if (!userId) {
       return next(new AppError('Not authorized', 401));
     }
 
-    const user = await User.findById(userId).select('-__v').lean();
+    const user = await User.findById(userId)
+      .select('-password -__v') // 🔥 IMPORTANT: remove password
+      .lean();
 
     if (!user) {
       return next(new AppError('User not found.', 404));
@@ -107,6 +128,7 @@ export const getMe = async (
       success: true,
       data: user,
     });
+
   } catch (error) {
     next(error);
   }

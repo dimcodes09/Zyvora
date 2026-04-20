@@ -11,28 +11,41 @@ export const protect = (
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    // ❌ No token
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return next(new AppError('No token provided. Authorization denied.', 401));
     }
 
     const token = authHeader.split(' ')[1];
 
+    // ❌ Invalid format
     if (!token) {
       return next(new AppError('Malformed token. Authorization denied.', 401));
     }
 
-    const decoded = verifyToken(token);
+    // ✅ Decode safely
+    const decoded = verifyToken(token) as {
+      userId: string;
+      role: string;
+    };
 
-    // ✅ attach BOTH userId + role
+    // ❌ Missing payload safety
+    if (!decoded?.userId) {
+      return next(new AppError('Invalid token payload.', 401));
+    }
+
+    // ✅ Attach to request
     (req as AuthRequest).userId = decoded.userId;
-    (req as AuthRequest).role = decoded.role; // 🔥 THIS LINE FIXES YOUR ERROR
+    (req as AuthRequest).role = decoded.role;
 
     next();
-  } catch (err) {
-    const message =
-      err instanceof Error && err.name === 'TokenExpiredError'
-        ? 'Token expired. Please log in again.'
-        : 'Invalid token. Authorization denied.';
+  } catch (err: any) {
+    // ✅ Better error handling
+    let message = 'Invalid token. Authorization denied.';
+
+    if (err?.name === 'TokenExpiredError') {
+      message = 'Token expired. Please log in again.';
+    }
 
     next(new AppError(message, 401));
   }

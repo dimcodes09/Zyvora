@@ -1,0 +1,201 @@
+/* ✅ ALWAYS FIRST (VERY IMPORTANT) */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+/* ✅ TAILWIND */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ✅ RESET (KEEP MINIMAL) */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ✅ ROOT VARIABLES */
+:root {
+  --rose: #C97B84;
+  --rose-light: #E8B4BA;
+  --rose-pale: #F5DDE0;
+  --rose-blush: #FAF0F1;
+  --rose-deep: #9B5C63;
+  --cream: #FDF8F5;
+  --warm-white: #FFFBF9;
+  --gold: #C4A882;
+  --text-dark: #3D2A2D;
+  --text-mid: #7A5C60;
+  --text-light: #B89BA0;
+}
+
+/* ✅ GLOBAL BASE */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+  overflow-x: hidden;
+  /* ⚠️ REMOVE THIS (was breaking UX) */
+  /* cursor: none; */
+}
+
+/* ✅ FONTS */
+.font-playfair {
+  font-family: 'Playfair Display', serif;
+}
+
+/* ✅ SCROLLBAR */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--rose-light);
+  border-radius: 3px;
+}
+
+/* ========================= */
+/* 🔥 ANIMATIONS */
+/* ========================= */
+
+/* MARQUEE */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 24s linear infinite;
+}
+
+/* FLOAT BAG */
+@keyframes float-bag {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-18px) rotate(2deg);
+  }
+}
+.animate-float-bag {
+  animation: float-bag 4s ease-in-out infinite;
+}
+
+/* BLOB */
+@keyframes blob-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -30px) scale(1.05);
+  }
+}
+.animate-blob {
+  animation: blob-float 8s ease-in-out infinite;
+}
+
+/* FLOAT GENERAL */
+@keyframes float-around {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
+}
+.animate-float {
+  animation: float-around 6s ease-in-out infinite;
+}
+
+/* AR FLOAT */
+@keyframes ar-float {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-15px);
+  }
+}
+.animate-ar-float {
+  animation: ar-float 3s ease-in-out infinite;
+}
+
+/* SHADOW */
+@keyframes shadow-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 0.2;
+    transform: translateX(-50%) scaleX(0.8);
+  }
+}
+.animate-shadow-pulse {
+  animation: shadow-pulse 3s ease-in-out infinite;
+}
+
+/* TYPING DOT */
+@keyframes typing-dot {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.chat-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--rose);
+  border-radius: 50%;
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+.chat-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.chat-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ========================= */
+/* 🎯 COMPONENT EFFECTS */
+/* ========================= */
+
+/* PRODUCT HOVER */
+.product-3d-svg {
+  transition: transform 0.4s ease;
+}
+.product-card-home:hover .product-3d-svg {
+  transform: scale(1.08) rotate(-3deg);
+}
+
+/* FLORAL CARD */
+.floral-card-item {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.floral-card-item:hover {
+  transform: scale(1.04);
+}
+
+/* SCROLL REVEAL */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
