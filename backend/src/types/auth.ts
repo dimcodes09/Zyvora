@@ -24,6 +24,7 @@ export interface RegisterBody {
   name: string;
   email: string;
   password: string;
+  role?: string; // 👈 ADD THIS
 }
 
 export interface LoginBody {
