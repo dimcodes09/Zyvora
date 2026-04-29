@@ -6,48 +6,59 @@ import Link from "next/link";
 import { useAuthStore } from "@/store/auth.store";
 
 export default function RegisterPage() {
-  const router  = useRouter();
+  const router = useRouter();
   const { register, loading, error } = useAuthStore();
 
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       await register(form.name, form.email, form.password);
-      router.push("/products");
+
+      // ✅ go to HOME
+      router.replace("/");
     } catch {}
   };
-
-  const set = (key: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((p) => ({ ...p, [key]: e.target.value }));
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold mb-6">Register</h1>
 
-        <div className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <input
             type="text"
             placeholder="Full Name"
             value={form.name}
-            onChange={set("name")}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, name: e.target.value }))
+            }
             className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black"
           />
+
           <input
             type="email"
             placeholder="Email"
             value={form.email}
-            onChange={set("email")}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, email: e.target.value }))
+            }
             className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black"
           />
+
           <input
             type="password"
             placeholder="Password"
             value={form.password}
-            onChange={set("password")}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, password: e.target.value }))
+            }
             className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black"
           />
 
@@ -58,17 +69,19 @@ export default function RegisterPage() {
           )}
 
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-black text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Register"}
           </button>
-        </div>
+        </form>
 
         <p className="mt-4 text-sm text-gray-500 text-center">
           Already have an account?{" "}
-          <Link href="/login" className="text-black underline">Login</Link>
+          <Link href="/login" className="text-black underline">
+            Login
+          </Link>
         </p>
       </div>
     </main>

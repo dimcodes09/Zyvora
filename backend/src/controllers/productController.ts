@@ -129,3 +129,48 @@ export const deleteProduct = async (
     next(error);
   }
 };
+
+// ─── GET /api/products/:id/similar ───────────────────────────  ← ADD FROM HERE
+export const getSimilarProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return next(new AppError('Invalid product ID', 400));
+    }
+
+    const product = await Product.findById(id).select('category price').lean();
+
+    if (!product) return next(new AppError('Product not found', 404));
+
+    const { category, price } = product as unknown as { category: string; price: number };
+
+    const priceFloor = price * 0.7;
+    const priceCeil  = price * 1.3;
+
+    const similar = await Product.find({
+      _id:      { $ne: id },
+      category: category,
+      price:    { $gte: priceFloor, $lte: priceCeil },
+    })
+      .select('-__v')
+      .lean();
+
+    const sorted = similar
+      .sort((a, b) => {
+        const aPrice = (a as unknown as { price: number }).price;
+        const bPrice = (b as unknown as { price: number }).price;
+        return Math.abs(aPrice - price) - Math.abs(bPrice - price);
+      })
+      .slice(0, 8);
+
+    res.status(200).json({ success: true, data: sorted });
+  } catch (error) {
+    next(error);
+  }
+};
+// ← ADD UNTIL HERE

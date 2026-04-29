@@ -16,6 +16,10 @@ import cartRoutes from './routes/cartRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+
+// ✅ NEW
+import hamperRoutes from './routes/hamperRoutes.js';
 
 const app: Application = express();
 
@@ -24,8 +28,13 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://your-app.vercel.app", // replace with real URL
+    ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -38,7 +47,9 @@ if (config.env !== 'test') {
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ─── RATE LIMITER (FIXED) ─────────────────────────────────────
+// ─── RATE LIMITERS ───────────────────────────────────────────
+
+// Strict limiter (writes)
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
@@ -48,25 +59,40 @@ const limiter = rateLimit({
   },
 });
 
-// ❌ DO NOT apply globally
-// app.use(limiter);
+// Product read limiter
+const productReadLimiter = rateLimit({
+  windowMs: config.rateLimit.windowMs,
+  max: 500,
+  message: {
+    success: false,
+    message: 'Too many product requests, please try again later.',
+  },
+});
 
-// ✅ Apply ONLY to non-auth routes
-app.use('/api/products', limiter);
+// Apply limiters
+app.use('/api/products', productReadLimiter);
 app.use('/api/cart', limiter);
 app.use('/api/orders', limiter);
 
+// ✅ (OPTIONAL but recommended)
+app.use('/api/hamper', limiter);
+
 // ─── Routes ───────────────────────────────────────────────────
+
 app.use('/api/payments', paymentRoutes);
 app.use('/api/health', healthRoutes);
 
-// ✅ AUTH WITHOUT LIMITER (IMPORTANT)
+// Auth (no limiter)
 app.use('/api/auth', authRoutes);
 
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/ai', aiRoutes);
+
+// ✅ NEW HAMPPER ROUTE
+app.use('/api/hamper', hamperRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────
 app.use(notFound);

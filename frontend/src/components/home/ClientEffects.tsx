@@ -146,7 +146,7 @@ export default function ClientEffects() {
 
     animate();
 
-    // ✅ SCROLL REVEAL (clean)
+    // ✅ SCROLL REVEAL — observe existing + future .reveal elements
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
@@ -158,7 +158,19 @@ export default function ClientEffects() {
       { threshold: 0.1 }
     );
 
-    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
+    // Observe all current .reveal elements
+    const observeReveals = () => {
+      document.querySelectorAll(".reveal:not(.visible)").forEach((el) => {
+        observer.observe(el);
+      });
+    };
+    observeReveals();
+
+    // Watch for new .reveal elements added to the DOM (async-rendered components)
+    const mutationObs = new MutationObserver(() => {
+      observeReveals();
+    });
+    mutationObs.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       window.removeEventListener("resize", resize);
@@ -167,6 +179,7 @@ export default function ClientEffects() {
       clearInterval(autoInt);
       cancelAnimationFrame(animId);
       observer.disconnect();
+      mutationObs.disconnect();
     };
   }, []);
 

@@ -22,7 +22,7 @@ export function middleware(req: NextRequest) {
 
   // 🔁 Prevent logged-in users from visiting auth pages
   if (isAuthRoute && token) {
-    return NextResponse.redirect(new URL("/products", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();

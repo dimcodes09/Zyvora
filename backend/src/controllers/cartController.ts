@@ -15,7 +15,7 @@ import type {
 const getPopulatedCart = (userId: string) =>
   Cart.findOne({ user: userId }).populate<{ items: PopulatedCartItem[] }>(
     'items.product',
-    'name price stock'
+    'name price stock image'
   );
 
 // ─── GET /api/cart ────────────────────────────────────────────

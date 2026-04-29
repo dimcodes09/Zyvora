@@ -2,7 +2,7 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  role: "user" | "admin";
+  role: "admin" | "user";
 }
 
 export interface Product {
@@ -10,9 +10,12 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  images: string[];
+  image?: string;   // single URL from backend (optional — may be empty string)
   category: string;
   stock: number;
+  createdAt?: string;
+updatedAt?: string;
+reelVideo?: string | null;
 }
 
 export interface CartItem {
@@ -21,9 +24,9 @@ export interface CartItem {
 }
 
 export interface Cart {
-  _id: string;
+  _id?: string;
   items: CartItem[];
-  total: number;
+  subtotal: number;
 }
 
 export interface Order {

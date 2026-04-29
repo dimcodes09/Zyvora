@@ -1,20 +1,34 @@
 "use client";
 
 import { useEffect } from "react";
-import Cookies from "js-cookie";
 import { useAuthStore } from "@/store/auth.store";
+import { useCartStore } from "@/store/cart.store";
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+export default function AuthProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const user = useAuthStore((s) => s.user);
 
+  const fetchCart = useCartStore((s) => s.fetchCart);
+
+  // 🔥 ALWAYS try to restore session
   useEffect(() => {
-    const token = Cookies.get("token");
+    fetchMe();
+  }, [fetchMe]);
 
-    // ✅ ONLY CALL IF TOKEN EXISTS
-    if (token) {
-      fetchMe();
+  // 🔥 Load cart AFTER user is ready
+  useEffect(() => {
+    if (user) {
+      fetchCart();
     }
-  }, []);
+  }, [user, fetchCart]);
+
+  // ⛔ prevent UI flicker / broken state
+  if (!hydrated) return null;
 
   return <>{children}</>;
 }

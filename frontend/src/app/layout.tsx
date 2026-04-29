@@ -6,6 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AuthProvider from "@/components/AuthProvider";
 import ClientEffects from "@/components/home/ClientEffects";
+import FloatingChat from "@/components/FloatingChat"; // ← new
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,9 @@ export default function RootLayout({
           </main>
 
           <Footer />
+
+          {/* ✅ FLOATING AI CHAT — always visible, every page */}
+          <FloatingChat />
         </AuthProvider>
 
       </body>

@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getOrders } from "@/services/order.service";
+import { Order } from "@/types";
 
 const statusStyles: Record<
   "pending" | "paid" | "shipped" | "delivered" | "cancelled",
@@ -12,14 +16,23 @@ const statusStyles: Record<
   cancelled: "bg-red-100 text-red-700",
 };
 
-export default async function OrdersPage() {
-  let orders;
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  try {
-    orders = await getOrders();
-  } catch {
+  useEffect(() => {
+    getOrders()
+      .then(setOrders)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading)
+    return <p className="p-6 text-sm text-gray-500">Loading orders...</p>;
+
+  if (error)
     return <p className="p-6 text-sm text-red-500">Failed to load orders.</p>;
-  }
 
   if (orders.length === 0)
     return (

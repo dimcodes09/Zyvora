@@ -15,7 +15,7 @@ export const register = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // ✅ validation
     if (!name || !email || !password) {
@@ -33,10 +33,11 @@ export const register = async (
 
     // ✅ create user
     const user = await User.create({
-      name,
-      email: normalizedEmail,
-      password,
-    });
+  name,
+  email: normalizedEmail,
+  password,
+  role: role === "admin" ? "admin" : "user", // ✅ ADD THIS
+});
 
     // ✅ generate token
     const token = signToken(String(user._id), user.role);
@@ -47,10 +48,11 @@ export const register = async (
       data: {
         token,
         user: {
-          id: String(user._id),
-          name: user.name,
-          email: user.email,
-        },
+  id: String(user._id),
+  name: user.name,
+  email: user.email,
+  role: user.role, // ✅ ADD THIS
+},
       },
     });
 
@@ -91,10 +93,11 @@ export const login = async (
       data: {
         token,
         user: {
-          id: String(user._id),
-          name: user.name,
-          email: user.email,
-        },
+  id: String(user._id),
+  name: user.name,
+  email: user.email,
+  role: user.role, // ✅ ADD THIS
+},
       },
     });
 
@@ -117,16 +120,22 @@ export const getMe = async (
     }
 
     const user = await User.findById(userId)
-      .select('-password -__v') // 🔥 IMPORTANT: remove password
+      .select('-password -__v')
       .lean();
 
     if (!user) {
       return next(new AppError('User not found.', 404));
     }
 
+    // ✅ FORCE return role
     res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        _id: String(user._id),
+        name: user.name,
+        email: user.email,
+        role: user.role, // 🔥 THIS FIXES NAVBAR
+      },
     });
 
   } catch (error) {

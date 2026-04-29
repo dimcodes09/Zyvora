@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
 import { useAuthStore } from "@/store/auth.store";
 
@@ -78,7 +78,7 @@ const NAV_STYLES = `
     opacity: 0.92;
   }
 
-  /* Thin divider between login/register */
+  /* Thin divider */
   .nb-divider {
     width: 1px;
     height: 12px;
@@ -91,35 +91,85 @@ const NAV_STYLES = `
     background: rgba(253, 248, 245, 0.97) !important;
     box-shadow: 0 2px 18px rgba(80,30,30,0.07) !important;
   }
+
+  /* ── Reels live dot pulse ────────────────────── */
+  @keyframes nb-pulse {
+    0%, 100% { opacity: 1;   transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+  .nb-reels-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #C0334A;
+    flex-shrink: 0;
+    animation: nb-pulse 1.8s ease-in-out infinite;
+  }
+
+  /* Reels link wrapper */
+  .nb-reels {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .nb-reels::after {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: 0;
+    width: 0; height: 1px;
+    background: #7B1728;
+    transition: width 0.25s ease;
+  }
+  .nb-reels:hover::after,
+  .nb-reels.active::after { width: 100%; }
 `;
 
 export default function Navbar() {
-  const router = useRouter();
+  const router   = useRouter();
+  const pathname = usePathname();
+
   const [activeHash, setActiveHash] = useState("");
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled,   setScrolled]   = useState(false);
 
   const cart = useCartStore((s) => s.cart);
-  const { user, logout } = useAuthStore();
+  const { user, logout, hydrated } = useAuthStore();
+
   const count = cart?.items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
+  const reelsActive = pathname === "/reels";
 
+  /* ── Scroll spy ────────────────────────────────── */
   useEffect(() => {
-    const syncHash = () => setActiveHash(window.location.hash);
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
+    const sections = navItems.map((item) => document.querySelector(item.href));
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) setActiveHash(`#${entry.target.id}`);
+        });
+      },
+      { rootMargin: "-40% 0px -50% 0px", threshold: 0 }
+    );
+
+    sections.forEach((s) => s && observer.observe(s));
+    return () => observer.disconnect();
+  }, []);
+
+  /* ── Scrolled shadow ───────────────────────────── */
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("hashchange", syncHash);
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const handleLogout = () => {
     logout();
     router.replace("/login");
   };
+
+  if (!hydrated) return null;
 
   return (
     <>
@@ -150,14 +200,14 @@ export default function Navbar() {
           }}
         >
 
-          {/* ── LEFT: Gender + thin divider ──────────── */}
+          {/* ── LEFT: Gender ─────────────────────── */}
           <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
-            <a href="#men" className="nb-gender">Men</a>
+            <a href="#men"   className="nb-gender">Men</a>
             <span className="nb-divider" />
             <a href="#women" className="nb-gender">Women</a>
           </div>
 
-          {/* ── CENTER: ZYVORA wordmark ───────────────── */}
+          {/* ── CENTER: Wordmark ──────────────────── */}
           <Link
             href="/"
             style={{
@@ -177,7 +227,7 @@ export default function Navbar() {
             Zyvora
           </Link>
 
-          {/* ── RIGHT: Nav + Auth + Cart ──────────────── */}
+          {/* ── RIGHT: Nav + Auth + Cart ──────────── */}
           <div
             style={{
               display: "flex",
@@ -188,6 +238,7 @@ export default function Navbar() {
           >
             {/* Nav links */}
             <nav style={{ display: "flex", alignItems: "center", gap: "1.8rem" }}>
+
               {navItems.map(({ href, label }) => {
                 const active = activeHash === href;
                 return (
@@ -202,21 +253,51 @@ export default function Navbar() {
                       letterSpacing: "0.13em",
                       textTransform: "uppercase",
                       color: active ? "#7B1728" : "#5C3A3A",
-                      transition: "color 0.2s ease",
                       whiteSpace: "nowrap",
                     }}
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLAnchorElement).style.color = "#7B1728")
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLAnchorElement).style.color =
-                        active ? "#7B1728" : "#5C3A3A")
-                    }
                   >
                     {label}
                   </a>
                 );
               })}
+
+              {/* ── Reels — separated by a thin rule ── */}
+              <span className="nb-divider" style={{ height: 14, margin: "0 0.1rem" }} />
+
+              <Link
+                href="/reels"
+                className={`nb-reels ${reelsActive ? "active" : ""}`}
+                style={{
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.13em",
+                  textTransform: "uppercase",
+                  color: reelsActive ? "#7B1728" : "#5C3A3A",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {/* Pulsing live dot */}
+                <span className="nb-reels-dot" />
+                Reels
+              </Link>
+
+              {/* Admin nav link */}
+              {user?.role === "admin" && (
+                <Link
+                  href="/admin/products"
+                  className="nb-link"
+                  style={{
+                    fontSize: "0.65rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.13em",
+                    textTransform: "uppercase",
+                    color: "#7B1728",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Admin
+                </Link>
+              )}
             </nav>
 
             {/* Thin separator */}
@@ -228,15 +309,34 @@ export default function Navbar() {
                 <span style={{ fontSize: "0.68rem", color: "#8A6060", letterSpacing: "0.03em" }}>
                   Hi, {user.name.split(" ")[0]}
                 </span>
+
+                {user.role === "admin" && (
+                  <Link
+                    href="/admin/products"
+                    style={{
+                      fontSize: "0.68rem",
+                      fontWeight: 600,
+                      color: "#8A6060",
+                      letterSpacing: "0.05em",
+                      textDecoration: "none",
+                      transition: "color 0.18s ease",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#7B1728")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#8A6060")}
+                  >
+                    Admin
+                  </Link>
+                )}
+
                 <button
                   onClick={handleLogout}
                   style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                    color: "#8A6060",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
+                    fontSize: "0.68rem",
+                    fontWeight: 600,
+                    color: "#8A6060",
                     letterSpacing: "0.05em",
                     padding: 0,
                     transition: "color 0.18s ease",

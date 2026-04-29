@@ -1,41 +1,66 @@
-import type { Request } from 'express';
-import type { JwtPayload } from 'jsonwebtoken';
+import { Schema, model, Types } from "mongoose";
+import type { Request } from "express";
 
-// ─── JWT ──────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────
 
-export interface TokenPayload extends JwtPayload {
-  userId: string;
+interface HamperItem {
+  productId: Types.ObjectId;
+  quantity: number;
 }
 
-// ─── Extended Request ─────────────────────────────────────────
+export interface IHamper {
+  userId: Types.ObjectId;
+  items: HamperItem[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
-// Attached by authMiddleware — available on all protected routes
 export interface AuthRequest extends Request {
   userId: string;
   role?: string;
 }
 
-// ─── Controller Bodies ────────────────────────────────────────
+// ─── Item Schema ───────────────────────────────────
 
-export interface RegisterBody {
-  name: string;
-  email: string;
-  password: string;
-}
+const hamperItemSchema = new Schema<HamperItem>(
+  {
+    productId: {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: [1, "Quantity must be at least 1"],
+      default: 1,
+    },
+  },
+  { _id: false }
+);
 
-export interface LoginBody {
-  email: string;
-  password: string;
-}
+// ─── Main Schema ───────────────────────────────────
 
-// ─── Token Response ───────────────────────────────────────────
+const hamperSchema = new Schema<IHamper>(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    items: {
+      type: [hamperItemSchema],
+      default: [],
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
+  }
+);
 
-export interface AuthResponse {
-  success: boolean;
-  token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
+// ─── Model ─────────────────────────────────────────
+
+export const Hamper = model<IHamper>("Hamper", hamperSchema);

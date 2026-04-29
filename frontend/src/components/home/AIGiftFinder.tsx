@@ -1,47 +1,123 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useZyvoraChat, type ChatMsg, type ChatProduct } from "@/hooks/useZyvoraChat";
 
-type Msg = { role: "bot" | "user"; text: string };
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const INITIAL: Msg[] = [
-  { role: "bot", text: "Hello! ✨ Tell me about the person you're gifting. What's the occasion?" },
-  { role: "user", text: "It's my mom's birthday — she loves florals and elegant things." },
-  { role: "bot", text: "Perfect! What's your budget? I'll find something truly special for her." },
-  { role: "user", text: "Around ₹2,000 to ₹5,000" },
-];
+// Strip the /api suffix so image paths like /uploads/foo.jpg resolve correctly
+const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+const BACKEND_URL = _apiUrl.replace(/\/api\/?$/, ""); // → "http://localhost:5000"
 
-const REPLIES = [
-  "Based on her love for florals ✨, I'd suggest the Crimson Romance Bouquet (₹1,299) paired with a Rose Scented Candle (₹899). Total: ₹2,198.",
-  "What a lovely choice! I also recommend the Garden Whisper Bouquet for an elegant vibe she'll adore.",
-  "For an anniversary, nothing beats our Pearl Earrings + Lavender Bouquet combo — timeless and magical!",
-  "Here are my top picks! 🌸 Would you like gift wrapping with a personalized note?",
-];
+const TAGS = ["✦ Birthday Gifts", "✦ Anniversary", "✦ Weddings", "✦ Just Because"] as const;
 
-const tags = ["✦ Birthday Gifts", "✦ Anniversary", "✦ Weddings", "✦ Just Because"];
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR", maximumFractionDigits: 0,
+  }).format(price);
+}
+
+function resolveImage(src?: string) {
+  if (!src || src.trim() === "") return "/placeholder.png";
+  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
+}
+
+// ── Product card inside chat ──────────────────────────────────────────────────
+
+function ChatProductCard({ product }: { product: ChatProduct }) {
+  return (
+    <a
+      href={`/products/${product._id}`}
+      className="flex items-center gap-3 bg-white rounded-2xl p-2.5 border border-rose-100 hover:shadow-md hover:border-[#C97B84]/40 transition-all duration-200 group"
+    >
+      <div
+        className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-[#FAF0F1]"
+        style={{ minWidth: "3.5rem" }}
+      >
+        <img
+          src={resolveImage(product.image)}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-bold tracking-widest uppercase text-[#C97B84] mb-0.5">
+          {product.category}
+        </p>
+        <p className="text-xs font-semibold text-[#3D2A2D] truncate leading-snug">
+          {product.name}
+        </p>
+        <p className="text-sm font-bold text-[#C97B84] mt-0.5">
+          {formatPrice(product.price)}
+        </p>
+      </div>
+      <span className="text-[#C97B84] text-lg pr-1 opacity-0 group-hover:opacity-100 transition-opacity">›</span>
+    </a>
+  );
+}
+
+// ── Message bubble ────────────────────────────────────────────────────────────
+
+function MessageBubble({ msg }: { msg: ChatMsg }) {
+  if (msg.role === "user") {
+    return (
+      <div
+        className="text-sm leading-[1.5] px-4 py-2 rounded-[18px] max-w-[80%] self-end text-white"
+        style={{ background: "var(--rose)", borderBottomRightRadius: 4 }}
+      >
+        {msg.text}
+      </div>
+    );
+  }
+
+  if (msg.kind === "products") {
+    return (
+      <div className="self-start max-w-[90%] w-full">
+        <p className="text-xs text-[#9B7280] mb-2 ml-1">Here are my top picks for you ✨</p>
+        <div className="flex flex-col gap-2">
+          {msg.products.map((p) => (
+            <ChatProductCard key={p._id} product={p} />
+          ))}
+        </div>
+        <p className="text-xs text-[#9B7280] mt-2 ml-1">
+          Click any product to view details 🛍️
+        </p>
+      </div>
+    );
+  }
+
+  // bot text
+  return (
+    <div
+      className="text-sm leading-[1.5] px-4 py-2 rounded-[18px] max-w-[80%] self-start"
+      style={{ background: "var(--rose-blush)", color: "var(--text-dark)", borderBottomLeftRadius: 4 }}
+    >
+      {msg.text}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AIGiftFinder() {
-  const [msgs, setMsgs] = useState<Msg[]>(INITIAL);
+  // ── Hook provides all chat state & the send function ──────────────────────
+  const { messages: msgs, isLoading: loading, sendMessage } = useZyvoraChat();
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [replyIdx, setReplyIdx] = useState(0);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, loading]);
 
   const send = () => {
-    const val = input.trim();
-    if (!val || typing) return;
-
-    setMsgs((m) => [...m, { role: "user", text: val }]);
+    const query = input.trim();
+    if (!query || loading) return;
     setInput("");
-    setTyping(true);
-
-    setTimeout(() => {
-      setMsgs((m) => [
-        ...m,
-        { role: "bot", text: REPLIES[replyIdx % REPLIES.length] },
-      ]);
-      setReplyIdx((i) => i + 1);
-      setTyping(false);
-    }, 1200);
+    sendMessage(query);
   };
 
   return (
@@ -50,14 +126,17 @@ export default function AIGiftFinder() {
       className="relative py-20 md:py-28 px-6 md:px-10 overflow-hidden"
       style={{ background: "var(--warm-white)" }}
     >
-      {/* BIG BACKGROUND TEXT */}
-      <div className="absolute right-[-2rem] top-1/2 -translate-y-1/2 font-playfair text-[12rem] md:text-[18rem] font-bold text-[rgba(201,123,132,0.05)] pointer-events-none">
+      {/* Decorative background text */}
+      <div
+        aria-hidden
+        className="absolute right-[-2rem] top-1/2 -translate-y-1/2 font-playfair text-[12rem] md:text-[18rem] font-bold text-[rgba(201,123,132,0.05)] pointer-events-none select-none"
+      >
         AI
       </div>
 
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
 
-        {/* LEFT */}
+        {/* ── Left: Copy ── */}
         <div className="reveal">
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-[var(--rose)] mb-4">
             <span className="w-6 h-[1px] bg-[var(--rose)]" />
@@ -66,8 +145,7 @@ export default function AIGiftFinder() {
 
           <h2 className="font-playfair text-[2.2rem] md:text-[3rem] font-bold leading-tight text-[var(--text-dark)] mb-4">
             Find the <em style={{ color: "var(--rose)" }}>Perfect</em>
-            <br />
-            Gift
+            <br />Gift
           </h2>
 
           <p className="text-[0.95rem] leading-[1.8] text-[var(--text-mid)] mb-8 max-w-[420px]">
@@ -76,10 +154,11 @@ export default function AIGiftFinder() {
           </p>
 
           <div className="flex flex-wrap gap-3">
-            {tags.map((t) => (
-              <span
+            {TAGS.map((t) => (
+              <button
                 key={t}
-                className="px-4 py-1.5 rounded-full text-xs cursor-pointer transition"
+                onClick={() => setInput(t.replace("✦ ", ""))}
+                className="px-4 py-1.5 rounded-full text-xs cursor-pointer transition hover:opacity-80"
                 style={{
                   background: "var(--rose-blush)",
                   border: "1px solid rgba(201,123,132,0.2)",
@@ -87,19 +166,20 @@ export default function AIGiftFinder() {
                 }}
               >
                 {t}
-              </span>
+              </button>
             ))}
           </div>
         </div>
 
-        {/* CHAT UI */}
-        <div className="reveal reveal-delay-2 rounded-[24px] overflow-hidden border shadow-[0_20px_60px_rgba(201,123,132,0.12)] bg-white"
-             style={{ borderColor: "rgba(201,123,132,0.1)" }}
+        {/* ── Right: Chat UI ── */}
+        <div
+          className="reveal reveal-delay-2 rounded-[24px] overflow-hidden border shadow-[0_20px_60px_rgba(201,123,132,0.12)] bg-white"
+          style={{ borderColor: "rgba(201,123,132,0.1)" }}
         >
-
-          {/* HEADER */}
-          <div className="flex items-center gap-3 px-5 py-4"
-               style={{ background: "var(--rose)" }}
+          {/* Header */}
+          <div
+            className="flex items-center gap-3 px-5 py-4"
+            style={{ background: "var(--rose)" }}
           >
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm bg-white/25">
               ✦
@@ -110,50 +190,53 @@ export default function AIGiftFinder() {
             </div>
           </div>
 
-          {/* MESSAGES */}
-          <div className="flex flex-col gap-3 px-5 py-5 min-h-[280px] max-h-[320px] overflow-y-auto">
-            {msgs.map((m, i) => (
-              <div
-                key={i}
-                className="text-sm leading-[1.5] px-4 py-2 rounded-[18px] max-w-[80%]"
-                style={{
-                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                  background:
-                    m.role === "user"
-                      ? "var(--rose)"
-                      : "var(--rose-blush)",
-                  color:
-                    m.role === "user" ? "white" : "var(--text-dark)",
-                  borderBottomRightRadius:
-                    m.role === "user" ? 4 : 18,
-                  borderBottomLeftRadius:
-                    m.role === "bot" ? 4 : 18,
-                }}
-              >
-                {m.text}
-              </div>
+          {/* Messages */}
+          <div className="flex flex-col gap-3 px-5 py-5 min-h-[280px] max-h-[380px] overflow-y-auto">
+            {msgs.map((msg, i) => (
+              <MessageBubble key={i} msg={msg} />
             ))}
 
-            {/* typing */}
-            {typing && (
-              <div className="flex gap-1 px-4 py-2 rounded-[18px] bg-[var(--rose-blush)] w-fit">
-                <div className="chat-dot" />
-                <div className="chat-dot" />
-                <div className="chat-dot" />
+            {/* Typing indicator */}
+            {loading && (
+              <div
+                role="status"
+                aria-label="AI is thinking"
+                className="flex gap-1 px-4 py-2 rounded-[18px] bg-[var(--rose-blush)] w-fit self-start"
+              >
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-[var(--rose)] inline-block"
+                    style={{ animation: `bounce 1s ease-in-out ${i * 0.15}s infinite` }}
+                  />
+                ))}
+                <style>{`
+                  @keyframes bounce {
+                    0%, 100% { transform: translateY(0); }
+                    50%       { transform: translateY(-5px); }
+                  }
+                `}</style>
               </div>
             )}
+
+            <div ref={bottomRef} />
           </div>
 
-          {/* INPUT */}
-          <div className="flex gap-3 px-5 py-4 border-t"
-               style={{ borderColor: "rgba(201,123,132,0.1)" }}
+          {/* Input */}
+          <div
+            className="flex gap-3 px-5 py-4 border-t"
+            style={{ borderColor: "rgba(201,123,132,0.1)" }}
           >
             <input
+              type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Describe your person..."
-              className="flex-1 text-sm px-4 py-2 rounded-full outline-none"
+              placeholder="e.g. luxury gift for girlfriend under ₹5000"
+              aria-label="Describe what you're looking for"
+              disabled={loading}
+              autoComplete="off"
+              className="flex-1 text-sm px-4 py-2 rounded-full outline-none disabled:opacity-60"
               style={{
                 border: "1.5px solid rgba(201,123,132,0.2)",
                 background: "var(--rose-blush)",
@@ -162,14 +245,15 @@ export default function AIGiftFinder() {
 
             <button
               onClick={send}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition hover:scale-105"
+              disabled={!input.trim() || loading}
+              aria-label="Send message"
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               style={{ background: "var(--rose)" }}
             >
               →
             </button>
           </div>
         </div>
-
       </div>
     </section>
   );

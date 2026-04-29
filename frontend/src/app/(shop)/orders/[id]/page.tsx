@@ -1,5 +1,9 @@
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { getOrderById } from "@/services/order.service";
+import { Order } from "@/types";
 
 const statusStyles: Record<
   "pending" | "paid" | "shipped" | "delivered" | "cancelled",
@@ -12,20 +16,40 @@ const statusStyles: Record<
   cancelled: "bg-red-100 text-red-700",
 };
 
-export default async function OrderDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  let order;
+export default function OrderDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
 
-  try {
-    order = await getOrderById(params.id);
-  } catch {
-    return notFound();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+
+    getOrderById(id)
+      .then(setOrder)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading)
+    return <p className="p-6 text-sm text-gray-500">Loading order...</p>;
+
+  if (error || !order) {
+    return (
+      <main className="p-6 text-center">
+        <p className="text-red-500 mb-3">Order not found.</p>
+        <button
+          onClick={() => router.push("/orders")}
+          className="text-sm underline"
+        >
+          Back to Orders
+        </button>
+      </main>
+    );
   }
-
-  if (!order) return notFound();
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -37,7 +61,11 @@ export default async function OrderDetailPage({
           </p>
         </div>
 
-        <span className={`text-xs px-3 py-1 rounded-full ${statusStyles[order.status]}`}>
+        <span
+          className={`text-xs px-3 py-1 rounded-full h-fit ${
+            statusStyles[order.status]
+          }`}
+        >
           {order.status}
         </span>
       </div>
