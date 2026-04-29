@@ -81,7 +81,6 @@ export const logout = (): void => {
 };
 
 // ✅ GET CURRENT USER
-// /auth/me returns raw mongo doc with `_id` already — no mapping needed
 export const getMe = async (): Promise<User> => {
   const { data } = await api.get<ApiResponse<User>>("/auth/me");
   return data.data;

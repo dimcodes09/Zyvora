@@ -1,8 +1,12 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
+// 🔥 normalize base URL
+const raw = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000")
+  .replace(/\/api\/?$/, "");
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
+  baseURL: `${raw}/api`, // ✅ ALWAYS ensures /api is present
   headers: {
     "Content-Type": "application/json",
   },
@@ -20,14 +24,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ✅ FIXED: no redirect loop
+// ✅ Response handler
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (typeof window !== "undefined") {
       if (error?.response?.status === 401) {
         Cookies.remove("token");
-        // ❌ DO NOT REDIRECT HERE
       }
     }
 
