@@ -20,6 +20,21 @@ export interface AuthRequest extends Request {
   role?: string;
 }
 
+export interface RegisterBody {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface LoginBody {
+  email: string;
+  password: string;
+}
+
+export interface TokenPayload {
+  userId: string;
+  role?: string;
+}
 // ─── Item Schema ───────────────────────────────────
 
 const hamperItemSchema = new Schema<HamperItem>(
