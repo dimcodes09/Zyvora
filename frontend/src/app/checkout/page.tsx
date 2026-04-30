@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cart.store";
+import { useHamperContext } from "@/context/HamperContext";
 import {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -65,7 +66,6 @@ const STYLES = `
     margin-bottom: 2.5rem;
   }
 
-  /* ── Divider ── */
   .co-divider {
     width: 40px;
     height: 1px;
@@ -73,7 +73,6 @@ const STYLES = `
     margin-bottom: 2.5rem;
   }
 
-  /* ── Item row ── */
   .co-item {
     display: flex;
     align-items: center;
@@ -138,7 +137,6 @@ const STYLES = `
     white-space: nowrap;
   }
 
-  /* ── Summary Card ── */
   .co-card {
     background: #fff;
     border-radius: 20px;
@@ -204,7 +202,6 @@ const STYLES = `
     color: #7B1728;
   }
 
-  /* ── Pay Button ── */
   .co-btn {
     width: 100%;
     margin-top: 1.8rem;
@@ -255,7 +252,6 @@ const STYLES = `
     letter-spacing: 0.02em;
   }
 
-  /* ── Success ── */
   .co-success {
     min-height: 100vh;
     display: flex;
@@ -263,9 +259,7 @@ const STYLES = `
     justify-content: center;
     background: #FAF7F5;
   }
-  .co-success-inner {
-    text-align: center;
-  }
+  .co-success-inner { text-align: center; }
   .co-success-icon {
     width: 72px;
     height: 72px;
@@ -292,16 +286,41 @@ const STYLES = `
   }
 `;
 
-export default function CheckoutPage() {
+// ── Inner component — must be inside Suspense because it uses useSearchParams ──
+
+function CheckoutInner() {
   const router = useRouter();
+
+  // useSearchParams() requires <Suspense> in Next.js App Router
+  const searchParams = useSearchParams();
+  const isHamper = searchParams.get("type") === "hamper";
+
+  // Regular cart checkout
   const { cart, fetchCart, resetCart } = useCartStore();
+
+  // Hamper checkout — reads from HamperProvider (in root layout)
+  const hamper = useHamperContext();
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => { fetchCart(); }, [fetchCart]);
+  useEffect(() => {
+    if (!isHamper) fetchCart();
+  }, [fetchCart, isHamper]);
 
-  const total = cart?.subtotal ?? 0;
+  // Unified item list depending on checkout type
+  const checkoutItems = isHamper
+    ? hamper.items.map((i) => ({
+        product: { _id: i._id, name: i.name, price: i.price, image: i.image },
+        quantity: i.qty,
+      }))
+    : (cart?.items ?? []);
+
+  // Unified total
+  const total = isHamper
+    ? hamper.total          // subtotal + packaging from HamperContext
+    : (cart?.subtotal ?? 0);
 
   const handlePayment = async () => {
     setLoading(true);
@@ -311,14 +330,15 @@ export default function CheckoutPage() {
     try {
       const orderData = await createRazorpayOrder();
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY,
-        amount: orderData.amount,
+        key:      process.env.NEXT_PUBLIC_RAZORPAY_KEY,
+        amount:   orderData.amount,
         currency: orderData.currency ?? "INR",
         order_id: orderData.razorpayOrderId,
         handler: async (response: any) => {
           try {
             await verifyRazorpayPayment(response);
-            resetCart();
+            if (isHamper) hamper.clearHamper();
+            else resetCart();
             setSuccess(true);
             setTimeout(() => router.push("/orders"), 2500);
           } catch { setError("Payment verification failed."); }
@@ -349,7 +369,9 @@ export default function CheckoutPage() {
     </>
   );
 
-  if (!cart) return (
+  // For cart checkout only: show loading while cart fetches.
+  // For hamper checkout: never block — hamper state already in context.
+  if (!isHamper && !cart) return (
     <>
       <style>{STYLES}</style>
       <div className="co-success">
@@ -366,17 +388,19 @@ export default function CheckoutPage() {
       <main className="co-root">
         <div className="co-page">
 
-          {/* ── LEFT ── */}
+          {/* ── LEFT: Item list ── */}
           <div>
             <p className="co-eyebrow">Zyvora — Secure Checkout</p>
-            <h1 className="co-title">Your Order</h1>
+            <h1 className="co-title">{isHamper ? "Your Hamper" : "Your Order"}</h1>
             <div className="co-divider" />
 
-            {cart.items.length === 0 ? (
-              <p style={{ color: "#A07878", fontSize: "0.85rem" }}>Your cart is empty.</p>
+            {checkoutItems.length === 0 ? (
+              <p style={{ color: "#A07878", fontSize: "0.85rem" }}>
+                {isHamper ? "Your hamper is empty." : "Your cart is empty."}
+              </p>
             ) : (
               <div>
-                {cart.items.map(({ product, quantity }) => (
+                {checkoutItems.map(({ product, quantity }) => (
                   <div key={product._id} className="co-item">
                     <div className="co-img-wrap">
                       {product.image ? (
@@ -398,7 +422,7 @@ export default function CheckoutPage() {
                     </div>
 
                     <p className="co-price">
-                      ₹{(product.price * quantity).toLocaleString()}
+                      ₹{(product.price * quantity).toLocaleString("en-IN")}
                     </p>
                   </div>
                 ))}
@@ -406,14 +430,21 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* ── RIGHT ── */}
+          {/* ── RIGHT: Summary card ── */}
           <div className="co-card">
             <p className="co-card-title">Order Summary</p>
 
             <div className="co-row">
               <span className="co-row-label">Subtotal</span>
-              <span className="co-row-val">₹{total.toLocaleString()}</span>
+              <span className="co-row-val">₹{total.toLocaleString("en-IN")}</span>
             </div>
+
+            {isHamper && (
+              <div className="co-row">
+                <span className="co-row-label">Gift Packaging</span>
+                <span className="co-row-val">₹{hamper.packaging.toLocaleString("en-IN")}</span>
+              </div>
+            )}
 
             <div className="co-row">
               <span className="co-row-label">Shipping</span>
@@ -427,7 +458,7 @@ export default function CheckoutPage() {
 
             <div className="co-total-row">
               <span className="co-total-label">Total</span>
-              <span className="co-total-val">₹{total.toLocaleString()}</span>
+              <span className="co-total-val">₹{total.toLocaleString("en-IN")}</span>
             </div>
 
             {error && <p className="co-error">{error}</p>}
@@ -437,7 +468,7 @@ export default function CheckoutPage() {
               onClick={handlePayment}
               disabled={loading || total === 0}
             >
-              {loading ? "Processing..." : `Pay ₹${total.toLocaleString()}`}
+              {loading ? "Processing..." : `Pay ₹${total.toLocaleString("en-IN")}`}
             </button>
 
             <p className="co-secure">
@@ -448,5 +479,23 @@ export default function CheckoutPage() {
         </div>
       </main>
     </>
+  );
+}
+
+// ── Default export wraps inner component in Suspense (required by Next.js) ──
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF7F5" }}>
+          <p style={{ fontSize: "0.8rem", color: "#A07878", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            Loading checkout...
+          </p>
+        </div>
+      }
+    >
+      <CheckoutInner />
+    </Suspense>
   );
 }

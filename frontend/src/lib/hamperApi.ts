@@ -36,9 +36,21 @@ export interface HamperResponse {
 
 // ─── Auth ─────────────────────────────────────────
 
+/**
+ * Read the auth token from cookies first (primary — matches axios.ts / js-cookie),
+ * then fall back to localStorage for compatibility.
+ */
 const getToken = (): string => {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("token") || "";
+
+  // js-cookie stores cookies as plain key=value readable via document.cookie
+  const cookieMatch = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("token="));
+  if (cookieMatch) return cookieMatch.split("=")[1] ?? "";
+
+  // fallback: some older code paths may store in localStorage
+  return localStorage.getItem("token") ?? "";
 };
 
 /** Returns auth headers or null when no token (guest user). Never throws. */

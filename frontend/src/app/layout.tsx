@@ -7,9 +7,7 @@ import Footer from "@/components/layout/Footer";
 import AuthProvider from "@/components/AuthProvider";
 import ClientEffects from "@/components/home/ClientEffects";
 import FloatingChat from "@/components/FloatingChat";
-import { HamperProvider }      from "@/context/HamperContext";       // ← new
-import FloatingHamperButton    from "@/components/FloatingHamperButton"; // ← new
-import HamperDrawer            from "@/components/HamperDrawer";     // ← new
+import { HamperProvider } from "@/context/HamperContext";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -42,12 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             {/* Floating AI chat (bottom-right, z-9999) */}
             <FloatingChat />
-
-            {/* Floating hamper button (sits just above chat button) */}
-            <FloatingHamperButton />
-
-            {/* Hamper slide-in drawer (controlled by HamperContext) */}
-            <HamperDrawer />
           </HamperProvider>
         </AuthProvider>
 

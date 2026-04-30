@@ -60,12 +60,15 @@ export function useHamper() {
           };
         });
 
+        // Mark as initialised BEFORE setItems so the sync effect
+        // (which runs after every setItems call) correctly skips this load.
+        initialised.current = true;
         setItems(mapped);
       } catch (err) {
         // Only real network / server errors reach here now
         console.warn("[useHamper] Could not load hamper:", err);
       } finally {
-        if (!cancelled) initialised.current = true;
+        if (!cancelled) initialised.current = true; // ensure set even on error
       }
     };
 

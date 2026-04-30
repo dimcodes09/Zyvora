@@ -636,8 +636,8 @@ export default function Hero() {
               <Link href="/products" className="h-btn-primary">
                 Explore Collection →
               </Link>
-              <Link href="#ai-finder" className="h-btn-ghost">
-                AI Gift Finder
+              <Link href="/hamper" className="h-btn-ghost">
+                Hamper
               </Link>
             </div>
 
