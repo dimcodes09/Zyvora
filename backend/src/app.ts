@@ -28,13 +28,22 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://zyvora-livid.vercel.app", // ✅ no trailing slash
-      "https://www.zyvora-livid.vercel.app", // optional www variant
-    ],
+    // ✅ Dynamic origin: allow localhost + any *.vercel.app URL (handles preview deploys)
+    origin: (origin, callback) => {
+      const allowed = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+      ];
+      // Allow requests with no origin (server-to-server, Postman)
+      if (!origin) return callback(null, true);
+      // Allow any Vercel deployment URL
+      if (origin.endsWith(".vercel.app") || allowed.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
