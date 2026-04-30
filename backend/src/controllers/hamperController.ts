@@ -1,21 +1,38 @@
-// controllers/hamperController.ts
 import type { Request, Response, NextFunction } from "express";
 import type { AuthRequest } from "../types/auth.js";
 import { Hamper } from "../models/Hamper.js";
 import { Types } from "mongoose";
 
-// ─── GET /api/hamper ──────────────────────────────────────────────────────────
-// Returns the authenticated user's hamper.
-// If no hamper exists yet, returns an empty items array (never 404).
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Helper: sanitise + deduplicate items ─────────────────────
+
+const sanitiseItems = (items: any[] = []) => {
+  const map = new Map<string, number>();
+
+  for (const item of items) {
+    const id = item.productId?.toString();
+    if (!id) continue;
+
+    const qty = Number(item.quantity);
+    if (!Number.isFinite(qty) || qty < 1) continue;
+
+    map.set(id, (map.get(id) ?? 0) + qty);
+  }
+
+  return Array.from(map.entries()).map(([productId, quantity]) => ({
+    productId: new Types.ObjectId(productId),
+    quantity,
+  }));
+};
+
+// ─── GET /api/hamper ─────────────────────────────────────────
 
 export const getHamper = async (
-  req: Request,           // ← standard Request so router.get() is happy
+  req: Request,
   res: Response,
   _next: NextFunction
 ): Promise<void> => {
   try {
-    const { userId } = req as AuthRequest;  // ← cast inside; protect() guarantees this exists
+    const { userId } = req as AuthRequest;
     const userObjectId = new Types.ObjectId(userId);
 
     const hamper = await Hamper.findOne({ userId: userObjectId })
@@ -30,24 +47,28 @@ export const getHamper = async (
       return;
     }
 
-    res.status(200).json({ success: true, data: hamper });
+    res.status(200).json({
+      success: true,
+      data: hamper,
+    });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message || "Server error" });
+    console.error("[GET /api/hamper]", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to retrieve hamper",
+    });
   }
 };
 
-// ─── POST /api/hamper ─────────────────────────────────────────────────────────
-// Full-replace: accepts { items: [{ productId, quantity }] } and upserts.
-// Returns the saved (and populated) hamper document.
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── POST /api/hamper ────────────────────────────────────────
 
 export const saveHamper = async (
-  req: Request,           // ← standard Request
+  req: Request,
   res: Response,
   _next: NextFunction
 ): Promise<void> => {
   try {
-    const { userId } = req as AuthRequest;  // ← cast inside
+    const { userId } = req as AuthRequest;
     const userObjectId = new Types.ObjectId(userId);
 
     const { items } = req.body as {
@@ -55,25 +76,51 @@ export const saveHamper = async (
     };
 
     if (!Array.isArray(items)) {
-      res.status(400).json({ success: false, message: "`items` must be an array." });
+      res.status(400).json({
+        success: false,
+        message: "`items` must be an array.",
+      });
       return;
     }
 
-    const sanitised = items
-      .filter((i) => i.productId && i.quantity >= 1)
-      .map((i) => ({
-        productId: new Types.ObjectId(i.productId),
-        quantity:  Math.floor(i.quantity),
-      }));
+    const cleanItems = sanitiseItems(items);
 
     const hamper = await Hamper.findOneAndUpdate(
       { userId: userObjectId },
-      { $set: { items: sanitised } },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      {
+        $set: {
+          items: cleanItems,
+          updatedAt: new Date(),
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
     ).populate("items.productId", "name price image category");
 
-    res.status(200).json({ success: true, data: hamper });
+    res.status(200).json({
+      success: true,
+      message: "Hamper saved successfully",
+      data: hamper,
+    });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message || "Server error" });
+    console.error("[POST /api/hamper]", err);
+
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e: any) => e.message);
+      res.status(400).json({
+        success: false,
+        message: messages.join(", "),
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to save hamper",
+    });
   }
 };

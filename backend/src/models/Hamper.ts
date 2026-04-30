@@ -1,61 +1,60 @@
-// models/Hamper.ts
 import { Schema, model, Types } from "mongoose";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────
 
 interface HamperItem {
   productId: Types.ObjectId;
-  quantity:  number;
+  quantity: number;
 }
 
 export interface IHamper {
-  userId:    Types.ObjectId;
-  items:     HamperItem[];
+  userId: Types.ObjectId;
+  items: HamperItem[];
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// ─── Sub-schema (no _id needed on items) ─────────────────────────────────────
+// ─── Item Schema ───────────────────────────────────
 
 const hamperItemSchema = new Schema<HamperItem>(
   {
     productId: {
-      type:     Schema.Types.ObjectId,
-      ref:      "Product",
+      type: Schema.Types.ObjectId,
+      ref: "Product",
       required: true,
     },
     quantity: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      [1, "Quantity must be at least 1"],
-      default:  1,
+      min: [1, "Quantity must be at least 1"],
+      default: 1,
     },
   },
-  { _id: false }   // keeps the items array lean
+  { _id: false }
 );
 
-// ─── Main schema ──────────────────────────────────────────────────────────────
+// ─── Main Schema ───────────────────────────────────
 
 const hamperSchema = new Schema<IHamper>(
   {
     userId: {
-      type:     Schema.Types.ObjectId,
-      ref:      "User",
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
-      unique:   true,   // one hamper per user
-      index:    true,
+      unique: true,
+      index: true,
     },
     items: {
-      type:    [hamperItemSchema],
+      type: [hamperItemSchema],
       default: [],
     },
   },
   {
-    timestamps: true,   // createdAt + updatedAt
+    timestamps: true,
     versionKey: false,
   }
 );
 
-// ─── Export ───────────────────────────────────────────────────────────────────
+// ─── Export ────────────────────────────────────────
 
 export const Hamper = model<IHamper>("Hamper", hamperSchema);

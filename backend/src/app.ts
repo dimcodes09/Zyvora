@@ -30,7 +30,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://your-app.vercel.app", // replace with real URL
+      "https://zyvora-livid.vercel.app", // ✅ no trailing slash
+      "https://www.zyvora-livid.vercel.app", // optional www variant
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],

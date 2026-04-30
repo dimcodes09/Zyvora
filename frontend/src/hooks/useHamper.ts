@@ -39,13 +39,16 @@ export function useHamper() {
 
     const load = async () => {
       try {
-        const { data } = await fetchHamper();
+        const result = await fetchHamper();
 
         if (cancelled) return;
 
+        // null means guest / not authenticated — start with empty hamper silently
+        if (!result) return;
+
         // The API returns { productId: { _id, name, … }, quantity }
         // Map that back to the flat HamperItem shape used in the UI.
-        const mapped: HamperItem[] = (data.items || []).map((entry: any) => {
+        const mapped: HamperItem[] = (result.data.items || []).map((entry: any) => {
           const p = entry.productId; // populated product object
           return {
             _id:      p._id,
@@ -59,7 +62,7 @@ export function useHamper() {
 
         setItems(mapped);
       } catch (err) {
-        // If fetch fails (e.g. user not logged in yet), start with empty hamper
+        // Only real network / server errors reach here now
         console.warn("[useHamper] Could not load hamper:", err);
       } finally {
         if (!cancelled) initialised.current = true;

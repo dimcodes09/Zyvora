@@ -4,9 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import * as THREE from "three";
-
-gsap.registerPlugin(ScrollTrigger);
+// ✅ THREE is imported dynamically inside useEffect to avoid SSR crashes on Vercel
 
 const florals = [
   {
@@ -49,84 +47,102 @@ function useThreeOrb(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    // ✅ Guard: skip if canvas has no dimensions yet
+    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) return;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-    camera.position.z = 4;
-
-    /* Soft blob geometry */
-    const geo = new THREE.IcosahedronGeometry(1.2, 8);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xD4909C,
-      roughness: 0.55,
-      metalness: 0.1,
-      transparent: true,
-      opacity: 0.55,
-      wireframe: false,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    scene.add(mesh);
-
-    /* Petal-like floating rings */
-    const ring1 = new THREE.Mesh(
-      new THREE.TorusGeometry(1.9, 0.018, 8, 80),
-      new THREE.MeshBasicMaterial({ color: 0xE8B4BA, transparent: true, opacity: 0.22 })
-    );
-    ring1.rotation.x = Math.PI / 3;
-    scene.add(ring1);
-
-    const ring2 = new THREE.Mesh(
-      new THREE.TorusGeometry(2.35, 0.012, 8, 80),
-      new THREE.MeshBasicMaterial({ color: 0xC4A882, transparent: true, opacity: 0.14 })
-    );
-    ring2.rotation.x = -Math.PI / 4;
-    ring2.rotation.z = Math.PI / 6;
-    scene.add(ring2);
-
-    /* Lights */
-    scene.add(new THREE.AmbientLight(0xfff0f0, 1.2));
-    const point = new THREE.PointLight(0xffc0cc, 2.5, 10);
-    point.position.set(2, 3, 3);
-    scene.add(point);
-    const point2 = new THREE.PointLight(0xC4A882, 1.5, 10);
-    point2.position.set(-3, -2, 2);
-    scene.add(point2);
-
-    /* Animate */
-    let frame = 0;
     let raf: number;
+    let cleanup: (() => void) | undefined;
 
-    const tick = () => {
-      frame += 0.005;
-      mesh.rotation.x = Math.sin(frame * 0.7) * 0.4;
-      mesh.rotation.y = frame * 0.5;
-      mesh.position.y = Math.sin(frame * 0.9) * 0.12;
-      ring1.rotation.y = frame * 0.3;
-      ring2.rotation.y = -frame * 0.2;
-      ring2.rotation.x = Math.sin(frame * 0.4) * 0.3 - Math.PI / 4;
-      renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
+    (async () => {
+      try {
+        const THREE = await import("three"); // ✅ dynamic import — browser only
 
-    /* Resize */
-    const onResize = () => {
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      camera.aspect = canvas.clientWidth / canvas.clientHeight;
-      camera.updateProjectionMatrix();
-    };
-    window.addEventListener("resize", onResize);
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "low-power" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      renderer.dispose();
-      geo.dispose();
-      mat.dispose();
-    };
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+        camera.position.z = 4;
+
+        /* Soft blob geometry */
+        const geo = new THREE.IcosahedronGeometry(1.2, 4);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xD4909C,
+          roughness: 0.55,
+          metalness: 0.1,
+          transparent: true,
+          opacity: 0.55,
+          wireframe: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+
+        /* Petal-like floating rings */
+        const ring1 = new THREE.Mesh(
+          new THREE.TorusGeometry(1.9, 0.018, 8, 80),
+          new THREE.MeshBasicMaterial({ color: 0xE8B4BA, transparent: true, opacity: 0.22 })
+        );
+        ring1.rotation.x = Math.PI / 3;
+        scene.add(ring1);
+
+        const ring2 = new THREE.Mesh(
+          new THREE.TorusGeometry(2.35, 0.012, 8, 80),
+          new THREE.MeshBasicMaterial({ color: 0xC4A882, transparent: true, opacity: 0.14 })
+        );
+        ring2.rotation.x = -Math.PI / 4;
+        ring2.rotation.z = Math.PI / 6;
+        scene.add(ring2);
+
+        /* Lights */
+        scene.add(new THREE.AmbientLight(0xfff0f0, 1.2));
+        const point = new THREE.PointLight(0xffc0cc, 2.5, 10);
+        point.position.set(2, 3, 3);
+        scene.add(point);
+        const point2 = new THREE.PointLight(0xC4A882, 1.5, 10);
+        point2.position.set(-3, -2, 2);
+        scene.add(point2);
+
+        /* Animate */
+        let frame = 0;
+
+        const tick = () => {
+          frame += 0.005;
+          mesh.rotation.x = Math.sin(frame * 0.7) * 0.4;
+          mesh.rotation.y = frame * 0.5;
+          mesh.position.y = Math.sin(frame * 0.9) * 0.12;
+          ring1.rotation.y = frame * 0.3;
+          ring2.rotation.y = -frame * 0.2;
+          ring2.rotation.x = Math.sin(frame * 0.4) * 0.3 - Math.PI / 4;
+          renderer.render(scene, camera);
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+
+        /* Resize */
+        const onResize = () => {
+          const w = canvas.clientWidth;
+          const h = canvas.clientHeight;
+          if (!w || !h) return;
+          renderer.setSize(w, h, false);
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+        };
+        window.addEventListener("resize", onResize);
+
+        cleanup = () => {
+          cancelAnimationFrame(raf);
+          window.removeEventListener("resize", onResize);
+          renderer.dispose();
+          geo.dispose();
+          mat.dispose();
+        };
+      } catch (e) {
+        console.warn("Three.js init failed (FloralStories)", e);
+      }
+    })();
+
+    return () => cleanup?.();
   }, [canvasRef]);
 }
 
@@ -247,6 +263,7 @@ export default function FloralStories() {
   useThreeOrb(canvasRef);
 
   useEffect(() => {
+    gsap.registerPlugin(ScrollTrigger); // ✅ register client-side only
     const ctx = gsap.context(() => {
       /* Header reveal */
       gsap.from(headRef.current, {

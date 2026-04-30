@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useHamper } from "@/hooks/useHamper";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+// Shape returned by GET /api/products
 interface Product {
   _id: string;
   name: string;
@@ -13,7 +13,11 @@ interface Product {
   category: string;
 }
 
-// ─── Fallback placeholder image ───────────────────────────────────────────────
+interface HamperItem extends Product {
+  qty: number;
+}
+
+// ─── Fallback placeholder image (inline SVG data-URL, no external deps) ───────
 
 const PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='130'%3E" +
@@ -21,23 +25,15 @@ const PLACEHOLDER =
   "%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' " +
   "font-size='40' font-family='serif'%3E🎁%3C/text%3E%3C/svg%3E";
 
-// ─── Sync status badge ────────────────────────────────────────────────────────
+// ─── API config ───────────────────────────────────────────────────────────────
 
-const SYNC_LABEL: Record<string, string> = {
-  saving: "⏳ Saving…",
-  saved:  "✓ Saved",
-  error:  "⚠ Save failed",
-  idle:   "",
-};
+const API_BASE = "http://localhost:5000/api";
 
-const SYNC_COLOR: Record<string, string> = {
-  saving: "#c09090",
-  saved:  "#4caf50",
-  error:  "#c0392b",
-  idle:   "transparent",
-};
+// Auth token helper — reads from localStorage (set during login)
+const getToken = () =>
+  typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
 
-// ─── Inline Styles ────────────────────────────────────────────────────────────
+type SyncStatus = "idle" | "saving" | "saved" | "error";
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
@@ -83,7 +79,10 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 6px",
     lineHeight: "1.1",
   },
-  headerTitleAccent: { color: "#8B1A2F", fontStyle: "italic" },
+  headerTitleAccent: {
+    color: "#8B1A2F",
+    fontStyle: "italic",
+  },
   headerSub: {
     fontSize: "13px",
     color: "#a07070",
@@ -98,16 +97,33 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     paddingBottom: "60px",
   },
-  leftPanel: { flex: "1", padding: "36px 40px 36px 48px", overflowY: "auto" as const },
+  leftPanel: {
+    flex: "1",
+    padding: "36px 40px 36px 48px",
+    overflowY: "auto" as const,
+  },
   gridHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "baseline",
     marginBottom: "24px",
   },
-  gridTitle: { fontSize: "11px", letterSpacing: "0.2em", color: "#8B1A2F", textTransform: "uppercase" as const },
-  gridCount: { fontSize: "11px", color: "#c09090", letterSpacing: "0.08em" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "20px" },
+  gridTitle: {
+    fontSize: "11px",
+    letterSpacing: "0.2em",
+    color: "#8B1A2F",
+    textTransform: "uppercase" as const,
+  },
+  gridCount: {
+    fontSize: "11px",
+    color: "#c09090",
+    letterSpacing: "0.08em",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+    gap: "20px",
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: "16px",
@@ -130,8 +146,8 @@ const styles: Record<string, React.CSSProperties> = {
   cardTag: {
     position: "absolute" as const,
     top: "10px",
-    right: "10px",
-    backgroundColor: "#3d1010",
+    left: "10px",
+    backgroundColor: "#8B1A2F",
     color: "#fff",
     fontSize: "9px",
     letterSpacing: "0.12em",
@@ -139,11 +155,44 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "20px",
     textTransform: "uppercase" as const,
   },
-  cardBody: { padding: "14px 16px 16px", display: "flex", flexDirection: "column" as const, flex: "1" },
-  cardCategory: { fontSize: "9px", letterSpacing: "0.18em", color: "#c09090", textTransform: "uppercase" as const, marginBottom: "4px" },
-  cardName: { fontSize: "14px", color: "#3d1010", fontWeight: "600", marginBottom: "4px", lineHeight: "1.3" },
-  cardFooter: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" },
-  cardPrice: { fontSize: "15px", color: "#8B1A2F", fontWeight: "700" },
+  cardBody: {
+    padding: "14px 16px 16px",
+    display: "flex",
+    flexDirection: "column" as const,
+    flex: "1",
+  },
+  cardCategory: {
+    fontSize: "9px",
+    letterSpacing: "0.18em",
+    color: "#c09090",
+    textTransform: "uppercase" as const,
+    marginBottom: "4px",
+  },
+  cardName: {
+    fontSize: "14px",
+    color: "#3d1010",
+    fontWeight: "600",
+    marginBottom: "4px",
+    lineHeight: "1.3",
+  },
+  cardDesc: {
+    fontSize: "11px",
+    color: "#b08888",
+    lineHeight: "1.5",
+    marginBottom: "14px",
+    flex: "1",
+  },
+  cardFooter: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "auto",
+  },
+  cardPrice: {
+    fontSize: "15px",
+    color: "#8B1A2F",
+    fontWeight: "700",
+  },
   addBtn: {
     backgroundColor: "#8B1A2F",
     color: "#fff",
@@ -156,8 +205,15 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "background 0.2s ease, transform 0.15s ease",
     fontFamily: "'Georgia', serif",
   },
-  addBtnAdded: { backgroundColor: "#3d1010", color: "#fce8e8" },
-  divider: { width: "1px", backgroundColor: "#e8c8c8", flexShrink: 0 },
+  addBtnAdded: {
+    backgroundColor: "#3d1010",
+    color: "#fce8e8",
+  },
+  divider: {
+    width: "1px",
+    backgroundColor: "#e8c8c8",
+    flexShrink: 0,
+  },
   rightPanel: {
     width: "340px",
     flexShrink: 0,
@@ -169,17 +225,29 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column" as const,
   },
-  hamperLabel: { fontSize: "10px", letterSpacing: "0.22em", color: "#c09090", textTransform: "uppercase" as const, marginBottom: "4px" },
-  hamperTitle: { fontSize: "26px", color: "#3d1010", fontWeight: "400", margin: "0 0 4px", lineHeight: "1.2" },
-  hamperTitleAccent: { color: "#8B1A2F", fontStyle: "italic" },
-  syncBadge: {
+  hamperLabel: {
     fontSize: "10px",
-    letterSpacing: "0.08em",
-    marginBottom: "12px",
-    minHeight: "14px",
-    transition: "color 0.3s",
+    letterSpacing: "0.22em",
+    color: "#c09090",
+    textTransform: "uppercase" as const,
+    marginBottom: "4px",
   },
-  hamperDivider: { height: "1px", backgroundColor: "#e8c8c8", marginBottom: "16px" },
+  hamperTitle: {
+    fontSize: "26px",
+    color: "#3d1010",
+    fontWeight: "400",
+    margin: "0 0 16px",
+    lineHeight: "1.2",
+  },
+  hamperTitleAccent: {
+    color: "#8B1A2F",
+    fontStyle: "italic",
+  },
+  hamperDivider: {
+    height: "1px",
+    backgroundColor: "#e8c8c8",
+    marginBottom: "16px",
+  },
   emptyState: {
     flex: "1",
     display: "flex",
@@ -190,9 +258,22 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "40px 20px",
     color: "#c09090",
   },
-  emptyEmoji: { fontSize: "48px", marginBottom: "12px", opacity: 0.6 },
-  emptyText: { fontSize: "13px", lineHeight: "1.7", color: "#c09090" },
-  itemList: { flex: "1", overflowY: "auto" as const, display: "flex", flexDirection: "column" as const },
+  emptyEmoji: {
+    fontSize: "48px",
+    marginBottom: "12px",
+    opacity: 0.6,
+  },
+  emptyText: {
+    fontSize: "13px",
+    lineHeight: "1.7",
+    color: "#c09090",
+  },
+  itemList: {
+    flex: "1",
+    overflowY: "auto" as const,
+    display: "flex",
+    flexDirection: "column" as const,
+  },
   itemRow: {
     display: "flex",
     alignItems: "center",
@@ -201,16 +282,21 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid #f0dada",
     animation: "fadeSlideIn 0.25s ease",
   },
-  itemThumb: {
+  itemEmojiBox: {
+    fontSize: "22px",
     flexShrink: 0,
     width: "38px",
     height: "38px",
-    borderRadius: "10px",
-    overflow: "hidden",
     backgroundColor: "#fdf4f4",
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  itemThumbImg: { width: "100%", height: "100%", objectFit: "cover" as const, display: "block" },
-  itemInfo: { flex: "1", minWidth: 0 },
+  itemInfo: {
+    flex: "1",
+    minWidth: 0,
+  },
   itemName: {
     fontSize: "12px",
     color: "#3d1010",
@@ -220,8 +306,18 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     marginBottom: "2px",
   },
-  itemCategory: { fontSize: "9px", color: "#c09090", letterSpacing: "0.1em", textTransform: "uppercase" as const },
-  qtyRow: { display: "flex", alignItems: "center", gap: "6px", marginTop: "5px" },
+  itemCategory: {
+    fontSize: "9px",
+    color: "#c09090",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+  },
+  qtyRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    marginTop: "5px",
+  },
   qtyBtn: {
     width: "20px",
     height: "20px",
@@ -238,10 +334,35 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "0",
     transition: "background 0.15s",
   },
-  qtyNum: { fontSize: "12px", color: "#3d1010", width: "16px", textAlign: "center" as const, fontWeight: "700" },
-  itemRight: { display: "flex", flexDirection: "column" as const, alignItems: "flex-end", gap: "4px", flexShrink: 0 },
-  itemPrice: { fontSize: "13px", color: "#8B1A2F", fontWeight: "700" },
-  removeBtn: { background: "none", border: "none", color: "#d4a0a0", cursor: "pointer", fontSize: "11px", padding: "0", lineHeight: "1", transition: "color 0.15s" },
+  qtyNum: {
+    fontSize: "12px",
+    color: "#3d1010",
+    width: "16px",
+    textAlign: "center" as const,
+    fontWeight: "700",
+  },
+  itemRight: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "flex-end",
+    gap: "4px",
+    flexShrink: 0,
+  },
+  itemPrice: {
+    fontSize: "13px",
+    color: "#8B1A2F",
+    fontWeight: "700",
+  },
+  removeBtn: {
+    background: "none",
+    border: "none",
+    color: "#d4a0a0",
+    cursor: "pointer",
+    fontSize: "11px",
+    padding: "0",
+    lineHeight: "1",
+    transition: "color 0.15s",
+  },
   summaryBox: {
     backgroundColor: "#fff",
     borderRadius: "14px",
@@ -249,13 +370,44 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "18px",
     marginTop: "20px",
   },
-  summaryRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" },
-  summaryLabel: { fontSize: "10px", color: "#c09090", letterSpacing: "0.1em", textTransform: "uppercase" as const },
-  summaryValue: { fontSize: "11px", color: "#a07070" },
-  totalDivider: { height: "1px", backgroundColor: "#f0dada", margin: "12px 0" },
-  totalRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
-  totalLabel: { fontSize: "11px", letterSpacing: "0.16em", color: "#3d1010", textTransform: "uppercase" as const, fontWeight: "600" },
-  totalPrice: { fontSize: "22px", color: "#8B1A2F", fontWeight: "700" },
+  summaryRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "8px",
+  },
+  summaryLabel: {
+    fontSize: "10px",
+    color: "#c09090",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+  },
+  summaryValue: {
+    fontSize: "11px",
+    color: "#a07070",
+  },
+  totalDivider: {
+    height: "1px",
+    backgroundColor: "#f0dada",
+    margin: "12px 0",
+  },
+  totalRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+  },
+  totalLabel: {
+    fontSize: "11px",
+    letterSpacing: "0.16em",
+    color: "#3d1010",
+    textTransform: "uppercase" as const,
+    fontWeight: "600",
+  },
+  totalPrice: {
+    fontSize: "22px",
+    color: "#8B1A2F",
+    fontWeight: "700",
+  },
   checkoutBtn: {
     width: "100%",
     marginTop: "14px",
@@ -286,13 +438,61 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "'Georgia', serif",
     transition: "border-color 0.2s, color 0.2s",
   },
-  skeletonCard: { backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #f0dada", overflow: "hidden" },
-  skeletonImg:  { height: "130px", backgroundColor: "#fceaea" },
-  skeletonBody: { padding: "14px 16px 16px" },
-  skeletonLine: { borderRadius: "6px", backgroundColor: "#fceaea", marginBottom: "8px" },
-  errorBox: { display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", gap: "12px", padding: "60px 20px", textAlign: "center" as const },
+
+  // ── Sync status indicator ──
+  syncBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "10px",
+    letterSpacing: "0.1em",
+    marginBottom: "12px",
+    minHeight: "16px",
+    transition: "opacity 0.3s",
+  },
+  syncDot: {
+    width: "6px",
+    height: "6px",
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+
+  // ── Skeleton ──
+  skeletonCard: {
+    backgroundColor: "#fff",
+    borderRadius: "16px",
+    border: "1px solid #f0dada",
+    overflow: "hidden",
+  },
+  skeletonImg: {
+    height: "130px",
+    backgroundColor: "#fceaea",
+  },
+  skeletonBody: {
+    padding: "14px 16px 16px",
+  },
+  skeletonLine: {
+    borderRadius: "6px",
+    backgroundColor: "#fceaea",
+    marginBottom: "8px",
+  },
+
+  // ── Error state ──
+  errorBox: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+    padding: "60px 20px",
+    textAlign: "center" as const,
+  },
   errorEmoji: { fontSize: "40px" },
-  errorText: { fontSize: "13px", color: "#b07070", lineHeight: "1.6" },
+  errorText: {
+    fontSize: "13px",
+    color: "#b07070",
+    lineHeight: "1.6",
+  },
   retryBtn: {
     backgroundColor: "transparent",
     border: "1px solid #d4839a",
@@ -305,19 +505,42 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontFamily: "'Georgia', serif",
   },
-  cardImg: { width: "100%", height: "100%", objectFit: "cover" as const, display: "block" },
+
+  // ── Real product image ──
+  cardImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover" as const,
+    display: "block",
+  },
+
+  // ── Hamper panel thumbnail ──
+  itemThumb: {
+    flexShrink: 0,
+    width: "38px",
+    height: "38px",
+    borderRadius: "10px",
+    overflow: "hidden",
+    backgroundColor: "#fdf4f4",
+  },
+  itemThumbImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover" as const,
+    display: "block",
+  },
 };
 
-// ─── Skeleton card ────────────────────────────────────────────────────────────
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
   return (
     <div style={styles.skeletonCard}>
       <div style={{ ...styles.skeletonImg, animation: "shimmer 1.4s infinite" }} />
       <div style={styles.skeletonBody}>
-        <div style={{ ...styles.skeletonLine, height: "9px",  width: "40%", animation: "shimmer 1.4s infinite 0.1s"  }} />
+        <div style={{ ...styles.skeletonLine, height: "9px", width: "40%", animation: "shimmer 1.4s infinite 0.1s" }} />
         <div style={{ ...styles.skeletonLine, height: "14px", width: "75%", animation: "shimmer 1.4s infinite 0.15s" }} />
-        <div style={{ ...styles.skeletonLine, height: "11px", width: "60%", animation: "shimmer 1.4s infinite 0.2s"  }} />
+        <div style={{ ...styles.skeletonLine, height: "11px", width: "60%", animation: "shimmer 1.4s infinite 0.2s" }} />
         <div style={{ height: "14px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ ...styles.skeletonLine, height: "15px", width: "30%", marginBottom: 0, animation: "shimmer 1.4s infinite 0.25s" }} />
@@ -328,69 +551,170 @@ function SkeletonCard() {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function HamperPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [fetchErr, setFetchErr] = useState(false);
-  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  // ── Product catalogue ──
+  const [products, setProducts]           = useState<Product[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(false);
 
-  // ── All hamper state + backend sync lives in the hook ──
-  const {
-    items,
-    syncStatus,
-    itemCount,
-    subtotal,
-    packaging,
-    total,
-    addItem,
-    changeQty,
-    removeItem,
-    clearHamper,
-  } = useHamper();
+  // ── Hamper state ──
+  const [selectedItems, setSelectedItems] = useState<HamperItem[]>([]);
+  const [addedIds, setAddedIds]           = useState<Set<string>>(new Set());
+  const [syncStatus, setSyncStatus]       = useState<SyncStatus>("idle");
+  const [hamperLoading, setHamperLoading] = useState(true);
+
+  // Debounce timer ref
+  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Skip auto-save on first render (before user touches anything)
+  const isFirstRender = useRef(true);
 
   // ── Fetch product catalogue ───────────────────────────────────────────────
-  const fetchProducts = () => {
+
+  const fetchProducts = useCallback(() => {
     setLoading(true);
-    setFetchErr(false);
-    fetch("http://localhost:5000/api/products")
+    setError(false);
+    fetch(`${API_BASE}/products`)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
         return res.json();
       })
       .then((data) => {
+        console.log("[Hamper] Raw API response:", data);
+        console.log("[Hamper] Is array?", Array.isArray(data));
+        if (!Array.isArray(data)) console.log("[Hamper] Keys:", Object.keys(data));
+
         const raw =
-          Array.isArray(data)            ? data          :
-          Array.isArray(data?.products)  ? data.products :
-          Array.isArray(data?.data)      ? data.data     :
-          Array.isArray(data?.results)   ? data.results  :
-          Array.isArray(data?.result)    ? data.result   :
-          Array.isArray(data?.items)     ? data.items    :
+          Array.isArray(data)            ? data           :
+          Array.isArray(data?.products)  ? data.products  :
+          Array.isArray(data?.data)      ? data.data      :
+          Array.isArray(data?.results)   ? data.results   :
+          Array.isArray(data?.result)    ? data.result    :
+          Array.isArray(data?.items)     ? data.items     :
           [];
+
+        console.log("[Hamper] Product count:", raw.length);
         setProducts(raw);
         setLoading(false);
       })
-      .catch(() => {
-        setFetchErr(true);
+      .catch((err) => {
+        console.error("[Hamper] Fetch failed:", err);
+        setError(true);
         setLoading(false);
       });
-  };
+  }, []);
 
-  useEffect(() => { fetchProducts(); }, []);
+  // ── Fetch saved hamper on mount ───────────────────────────────────────────
 
-  // ── Add to hamper with brief visual flash ─────────────────────────────────
-  const handleAdd = (product: Product) => {
-    addItem(product);
+  const fetchHamper = useCallback(async () => {
+    const token = getToken();
+    if (!token) { setHamperLoading(false); return; }
+
+    try {
+      const res = await fetch(`${API_BASE}/hamper`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { data } = await res.json();
+
+      if (!data?.items?.length) { setHamperLoading(false); return; }
+
+      // Populated items arrive as: { productId: { _id, name, price, image, category }, quantity }
+      const restored: HamperItem[] = data.items
+        .map((item: { productId: Product; quantity: number }) => {
+          const p = item.productId;
+          if (!p?._id) return null;
+          return { ...p, qty: item.quantity };
+        })
+        .filter(Boolean) as HamperItem[];
+
+      setSelectedItems(restored);
+    } catch (err) {
+      console.error("[Hamper] Failed to load saved hamper:", err);
+    } finally {
+      setHamperLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+    fetchHamper();
+  }, [fetchProducts, fetchHamper]);
+
+  // ── Debounced auto-save (800 ms after last change) ────────────────────────
+
+  const saveHamper = useCallback(async (items: HamperItem[]) => {
+    const token = getToken();
+    if (!token) return; // guest — skip silently
+
+    setSyncStatus("saving");
+    try {
+      const res = await fetch(`${API_BASE}/hamper`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items: items.map((i) => ({ productId: i._id, quantity: i.qty })),
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSyncStatus("saved");
+      setTimeout(() => setSyncStatus("idle"), 2000);
+    } catch (err) {
+      console.error("[Hamper] Save failed:", err);
+      setSyncStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => saveHamper(selectedItems), 800);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [selectedItems, saveHamper]);
+
+  // ── Hamper mutations ──────────────────────────────────────────────────────
+
+  const addToHamper = (product: Product) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((i) => i._id === product._id);
+      if (existing) return prev.map((i) => i._id === product._id ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...product, qty: 1 }];
+    });
     setAddedIds((prev) => new Set(prev).add(product._id));
     setTimeout(() => {
-      setAddedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(product._id);
-        return next;
-      });
+      setAddedIds((prev) => { const n = new Set(prev); n.delete(product._id); return n; });
     }, 900);
   };
+
+  const changeQty = (id: string, delta: number) =>
+    setSelectedItems((prev) =>
+      prev.map((i) => i._id === id ? { ...i, qty: i.qty + delta } : i).filter((i) => i.qty > 0)
+    );
+
+  const removeItem = (id: string) =>
+    setSelectedItems((prev) => prev.filter((i) => i._id !== id));
+
+  const clearHamper = () => setSelectedItems([]);
+
+  // ── Derived totals ────────────────────────────────────────────────────────
+
+  const itemCount = selectedItems.reduce((s, i) => s + i.qty, 0);
+  const subtotal  = selectedItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const packaging = itemCount > 0 ? 199 : 0;
+  const total     = subtotal + packaging;
+
+  // ── Sync indicator ────────────────────────────────────────────────────────
+
+  const syncConfig = {
+    idle:   { color: "transparent", label: "" },
+    saving: { color: "#c09090",     label: "Saving…" },
+    saved:  { color: "#7fba7f",     label: "Hamper saved" },
+    error:  { color: "#c0504d",     label: "Save failed — will retry" },
+  }[syncStatus];
 
   return (
     <>
@@ -404,14 +728,17 @@ export default function HamperPage() {
           50%  { opacity: 0.45; }
           100% { opacity: 1; }
         }
-        .zy-card:hover  { box-shadow: 0 6px 28px rgba(139,26,47,0.13) !important; transform: translateY(-2px); }
-        .zy-add:hover   { background-color: #6b1224 !important; }
-        .zy-qty:hover   { background-color: #fdf0f0 !important; }
-        .zy-rm:hover    { color: #8B1A2F !important; }
-        .zy-co:hover    { background-color: #6b1224 !important; }
-        .zy-clr:hover   { border-color: #c09090 !important; color: #8B1A2F !important; }
+        .zy-card:hover {
+          box-shadow: 0 6px 28px rgba(139,26,47,0.13) !important;
+          transform: translateY(-2px);
+        }
+        .zy-add:hover  { background-color: #6b1224 !important; }
+        .zy-qty:hover  { background-color: #fdf0f0 !important; }
+        .zy-rm:hover   { color: #8B1A2F !important; }
+        .zy-co:hover   { background-color: #6b1224 !important; }
+        .zy-clr:hover  { border-color: #c09090 !important; color: #8B1A2F !important; }
         .zy-retry:hover { background-color: #fdf4f4 !important; }
-        ::-webkit-scrollbar       { width: 3px; }
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-thumb { background: #e0b8b8; border-radius: 4px; }
       `}</style>
 
@@ -428,26 +755,28 @@ export default function HamperPage() {
             ZYVORA &nbsp;·&nbsp; GIFTING STUDIO
           </div>
           <h1 style={styles.headerTitle}>
-            Build your <span style={styles.headerTitleAccent}>own hamper</span>
+            Build your{" "}
+            <span style={styles.headerTitleAccent}>own hamper</span>
           </h1>
           <p style={styles.headerSub}>
             Handpick items that speak to the heart — curated into one beautiful gift.
           </p>
         </div>
 
-        {/* Layout */}
+        {/* Split Layout */}
         <div style={styles.main}>
 
-          {/* ── LEFT: product grid ── */}
+          {/* ── LEFT ── */}
           <div style={styles.leftPanel}>
             <div style={styles.gridHeader}>
               <span style={styles.gridTitle}>✦ Choose Your Items</span>
               <span style={styles.gridCount}>
-                {loading ? "Loading…" : fetchErr ? "" : `${products.length} products`}
+                {loading ? "Loading…" : error ? "" : `${products.length} products`}
               </span>
             </div>
 
-            {fetchErr && (
+            {/* Error state */}
+            {error && (
               <div style={styles.errorBox}>
                 <div style={styles.errorEmoji}>🌸</div>
                 <p style={styles.errorText}>
@@ -460,24 +789,26 @@ export default function HamperPage() {
               </div>
             )}
 
+            {/* Skeleton grid */}
             {loading && (
               <div style={styles.grid}>
                 {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
             )}
 
-            {!loading && !fetchErr && (
+            {/* Real product grid */}
+            {!loading && !error && (
               <div style={styles.grid}>
                 {products.map((product) => {
                   const isAdded  = addedIds.has(product._id);
-                  const inHamper = items.find((i) => i._id === product._id);
+                  const inHamper = selectedItems.find((i) => i._id === product._id);
                   return (
                     <div
                       key={product._id}
                       className="zy-card"
                       style={{
                         ...styles.card,
-                        ...(inHamper ? { border: "1px solid #d4839a", boxShadow: "0 2px 20px rgba(139,26,47,0.10)" } : {}),
+                        ...(inHamper ? { borderColor: "#d4839a", boxShadow: "0 2px 20px rgba(139,26,47,0.10)" } : {}),
                       }}
                     >
                       <div style={styles.cardImageBlock}>
@@ -488,7 +819,9 @@ export default function HamperPage() {
                           onError={(e) => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER; }}
                         />
                         {inHamper && (
-                          <span style={styles.cardTag}>×{inHamper.qty}</span>
+                          <span style={{ ...styles.cardTag, left: "auto", right: "10px", backgroundColor: "#3d1010" }}>
+                            ×{inHamper.qty}
+                          </span>
                         )}
                       </div>
                       <div style={styles.cardBody}>
@@ -496,13 +829,11 @@ export default function HamperPage() {
                         <div style={styles.cardName}>{product.name}</div>
                         <div style={{ flex: "1" }} />
                         <div style={styles.cardFooter}>
-                          <span style={styles.cardPrice}>
-                            ₹{product.price.toLocaleString("en-IN")}
-                          </span>
+                          <span style={styles.cardPrice}>₹{product.price.toLocaleString("en-IN")}</span>
                           <button
                             className="zy-add"
                             style={{ ...styles.addBtn, ...(isAdded ? styles.addBtnAdded : {}) }}
-                            onClick={() => handleAdd(product)}
+                            onClick={() => addToHamper(product)}
                           >
                             {isAdded ? "✓ Added" : "+ Add to Hamper"}
                           </button>
@@ -518,26 +849,37 @@ export default function HamperPage() {
           {/* Divider */}
           <div style={styles.divider} />
 
-          {/* ── RIGHT: hamper panel ── */}
+          {/* ── RIGHT ── */}
           <div style={styles.rightPanel}>
             <div style={styles.hamperLabel}>Your Selection</div>
             <h2 style={styles.hamperTitle}>
               Your <span style={styles.hamperTitleAccent}>Hamper</span>
             </h2>
 
-            {/* Sync status badge */}
-            <div
-              style={{
-                ...styles.syncBadge,
-                color: SYNC_COLOR[syncStatus] || "transparent",
-              }}
-            >
-              {SYNC_LABEL[syncStatus] || ""}
+            {/* Sync status pill */}
+            <div style={{ ...styles.syncBar, opacity: syncStatus === "idle" ? 0 : 1 }}>
+              <span style={{ ...styles.syncDot, backgroundColor: syncConfig.color }} />
+              <span style={{ color: syncConfig.color, letterSpacing: "0.1em", fontSize: "10px" }}>
+                {syncConfig.label}
+              </span>
             </div>
 
             <div style={styles.hamperDivider} />
 
-            {items.length === 0 ? (
+            {/* Hamper loading skeleton */}
+            {hamperLoading ? (
+              <div style={{ paddingTop: "8px" }}>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} style={{ display: "flex", gap: "12px", padding: "12px 0", borderBottom: "1px solid #f0dada" }}>
+                    <div style={{ width: "38px", height: "38px", borderRadius: "10px", backgroundColor: "#fceaea", animation: "shimmer 1.4s infinite", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: "12px", width: "70%", backgroundColor: "#fceaea", borderRadius: "6px", marginBottom: "6px", animation: "shimmer 1.4s infinite" }} />
+                      <div style={{ height: "10px", width: "40%", backgroundColor: "#fceaea", borderRadius: "6px", animation: "shimmer 1.4s infinite" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : selectedItems.length === 0 ? (
               <div style={styles.emptyState}>
                 <div style={styles.emptyEmoji}>🎁</div>
                 <p style={styles.emptyText}>
@@ -547,7 +889,7 @@ export default function HamperPage() {
               </div>
             ) : (
               <div style={styles.itemList}>
-                {items.map((item) => (
+                {selectedItems.map((item) => (
                   <div key={item._id} style={styles.itemRow}>
                     <div style={styles.itemThumb}>
                       <img
@@ -567,19 +909,15 @@ export default function HamperPage() {
                       </div>
                     </div>
                     <div style={styles.itemRight}>
-                      <span style={styles.itemPrice}>
-                        ₹{(item.price * item.qty).toLocaleString("en-IN")}
-                      </span>
-                      <button className="zy-rm" style={styles.removeBtn} onClick={() => removeItem(item._id)} title="Remove">
-                        ✕
-                      </button>
+                      <span style={styles.itemPrice}>₹{(item.price * item.qty).toLocaleString("en-IN")}</span>
+                      <button className="zy-rm" style={styles.removeBtn} onClick={() => removeItem(item._id)} title="Remove">✕</button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {items.length > 0 && (
+            {selectedItems.length > 0 && !hamperLoading && (
               <div style={styles.summaryBox}>
                 <div style={styles.summaryRow}>
                   <span style={styles.summaryLabel}>Items</span>

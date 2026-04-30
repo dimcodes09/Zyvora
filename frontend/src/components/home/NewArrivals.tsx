@@ -124,8 +124,12 @@ export default function NewArrivals() {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        // ✅ Guard: wait until parent has real dimensions
+        const parent = canvas.parentElement;
+        if (!parent || parent.offsetWidth === 0 || parent.offsetHeight === 0) return;
+
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: "low-power" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.setClearColor(0x000000, 0);
 
         const scene  = new THREE.Scene();
@@ -133,8 +137,10 @@ export default function NewArrivals() {
         camera.position.z = 5;
 
         const resize = () => {
-          const { offsetWidth: w, offsetHeight: h } = canvas.parentElement!;
-          renderer.setSize(w, h);
+          const w = canvas.parentElement?.offsetWidth ?? 0;
+          const h = canvas.parentElement?.offsetHeight ?? 0;
+          if (!w || !h) return; // ✅ skip if still 0
+          renderer.setSize(w, h, false);
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
         };

@@ -1,52 +1,61 @@
-import type { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.js';
-import { AppError } from './errorHandler.js';
-import type { AuthRequest } from '../types/auth.js';
+import type { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 
-export const protect = (
-  req: Request,
-  _res: Response,
+interface DecodedToken extends JwtPayload {
+  userId?: string;
+  id?: string;
+  _id?: string;
+  email?: string;
+}
+
+const protect = (
+  req: Request & { user?: any },
+  res: Response,
   next: NextFunction
-): void => {
+) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "No token provided. Authorization denied.",
+    });
+  }
+
+  const token = authHeader.split(" ")[1] ?? "";
+
   try {
-    const authHeader = req.headers.authorization;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as DecodedToken;
 
-    // ❌ No token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return next(new AppError('No token provided. Authorization denied.', 401));
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    // ❌ Invalid format
-    if (!token) {
-      return next(new AppError('Malformed token. Authorization denied.', 401));
-    }
-
-    // ✅ Decode safely
-    const decoded = verifyToken(token) as {
-      userId: string;
-      role: string;
+    req.user = {
+      userId: decoded.userId || decoded.id || decoded._id,
+      email: decoded.email,
     };
 
-    // ❌ Missing payload safety
-    if (!decoded?.userId) {
-      return next(new AppError('Invalid token payload.', 401));
+    if (!req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token payload.",
+      });
     }
-
-    // ✅ Attach to request
-    (req as AuthRequest).userId = decoded.userId;
-    (req as AuthRequest).role = decoded.role;
 
     next();
   } catch (err: any) {
-    // ✅ Better error handling
-    let message = 'Invalid token. Authorization denied.';
+    const message =
+      err?.name === "TokenExpiredError"
+        ? "Token has expired. Please log in again."
+        : "Invalid token. Authorization denied.";
 
-    if (err?.name === 'TokenExpiredError') {
-      message = 'Token expired. Please log in again.';
-    }
-
-    next(new AppError(message, 401));
+    return res.status(401).json({
+      success: false,
+      message,
+    });
   }
 };
+
+export { protect };
+export default protect;

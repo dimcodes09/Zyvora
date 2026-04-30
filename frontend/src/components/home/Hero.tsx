@@ -372,6 +372,7 @@ function ProductCarousel() {
             alt={product.name}
             fill
             priority={current === 0}
+            sizes="(max-width: 768px) 90vw, (max-width: 1200px) 40vw, 30vw"
             className="object-contain"
             style={{ borderRadius: "4px" }}
           />

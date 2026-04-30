@@ -6,50 +6,49 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AuthProvider from "@/components/AuthProvider";
 import ClientEffects from "@/components/home/ClientEffects";
-import FloatingChat from "@/components/FloatingChat"; // ← new
+import FloatingChat from "@/components/FloatingChat";
+import { HamperProvider }      from "@/context/HamperContext";       // ← new
+import FloatingHamperButton    from "@/components/FloatingHamperButton"; // ← new
+import HamperDrawer            from "@/components/HamperDrawer";     // ← new
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Zyvora — Your Choice",
   description: "Premium Gift Curation",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-screen flex flex-col bg-white text-gray-900">
 
-        {/* ✅ GLOBAL CLIENT EFFECTS (GSAP / cursor / etc) */}
         <ClientEffects />
 
         <AuthProvider>
-          <Navbar />
+          {/*
+           * HamperProvider wraps everything so ANY product card in the tree
+           * can call: const { addItem } = useHamperContext()
+           */}
+          <HamperProvider>
+            <Navbar />
 
-          {/* ✅ IMPORTANT: main + flex-1 */}
-          <main className="flex-1">
-            {children}
-          </main>
+            <main className="flex-1">
+              {children}
+            </main>
 
-          <Footer />
+            <Footer />
 
-          {/* ✅ FLOATING AI CHAT — always visible, every page */}
-          <FloatingChat />
+            {/* Floating AI chat (bottom-right, z-9999) */}
+            <FloatingChat />
+
+            {/* Floating hamper button (sits just above chat button) */}
+            <FloatingHamperButton />
+
+            {/* Hamper slide-in drawer (controlled by HamperContext) */}
+            <HamperDrawer />
+          </HamperProvider>
         </AuthProvider>
 
       </body>

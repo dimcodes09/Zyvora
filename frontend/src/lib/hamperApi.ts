@@ -41,13 +41,10 @@ const getToken = (): string => {
   return localStorage.getItem("token") || "";
 };
 
-const authHeaders = (): Record<string, string> => {
+/** Returns auth headers or null when no token (guest user). Never throws. */
+const authHeaders = (): Record<string, string> | null => {
   const token = getToken();
-
-  if (!token) {
-    throw new Error("User not authenticated. No token found.");
-  }
-
+  if (!token) return null;
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -56,11 +53,15 @@ const authHeaders = (): Record<string, string> => {
 
 // ─── API ─────────────────────────────────────────
 
-export async function fetchHamper(): Promise<HamperResponse> {
-  const res = await fetch(`${BASE}/hamper`, {
-    method: "GET",
-    headers: authHeaders(),
-  });
+/**
+ * Fetch the current user's hamper.
+ * Returns null silently when the user is not authenticated.
+ */
+export async function fetchHamper(): Promise<HamperResponse | null> {
+  const headers = authHeaders();
+  if (!headers) return null; // guest — no error, just empty
+
+  const res = await fetch(`${BASE}/hamper`, { method: "GET", headers });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -70,12 +71,19 @@ export async function fetchHamper(): Promise<HamperResponse> {
   return res.json();
 }
 
+/**
+ * Persist hamper items to the backend.
+ * Returns null silently when the user is not authenticated.
+ */
 export async function saveHamper(
   items: HamperItemPayload[]
-): Promise<HamperResponse> {
+): Promise<HamperResponse | null> {
+  const headers = authHeaders();
+  if (!headers) return null; // guest — nothing to save
+
   const res = await fetch(`${BASE}/hamper`, {
     method: "POST",
-    headers: authHeaders(),
+    headers,
     body: JSON.stringify({ items }),
   });
 

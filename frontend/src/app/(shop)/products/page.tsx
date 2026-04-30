@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { getProducts } from "@/services/product.service";
 import { Product } from "@/types";
 import { SlidersHorizontal, X, ChevronDown, Search, Loader2, Sparkles } from "lucide-react";
@@ -247,7 +248,10 @@ function AISearchBar({ value, onChange }: AISearchBarProps) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-export default function ProductsPage() {
+import { Suspense } from "react";
+
+function ProductsPageInner() {
+  const searchParams                            = useSearchParams();
   const [products, setProducts]                 = useState<Product[]>([]);
   const [loading, setLoading]                   = useState(true);
   const [error, setError]                       = useState<string | null>(null);
@@ -260,12 +264,20 @@ export default function ProductsPage() {
   const [sortOpen, setSortOpen]                 = useState(false);
   const sortRef                                 = useRef<HTMLDivElement>(null);
 
+  // Load products
   useEffect(() => {
     getProducts()
       .then(setProducts)
       .catch(() => setError("Failed to load products."))
       .finally(() => setLoading(false));
   }, []);
+
+  // Pre-select category from URL ?category= param (case-insensitive)
+  useEffect(() => {
+    const urlCat = searchParams.get("category");
+    if (!urlCat) return;
+    setSelectedCategory(urlCat); // stored lowercase, matched below
+  }, [searchParams]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -276,9 +288,19 @@ export default function ProductsPage() {
   }, []);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+    const cats = Array.from(new Set(products.map((p) => p.category).filter(Boolean))) as string[];
     return ["All", ...cats];
   }, [products]);
+
+  // Resolve URL param to actual category name once products load
+  useEffect(() => {
+    const urlCat = searchParams.get("category");
+    if (!urlCat || loading || categories.length <= 1) return;
+    const match = categories.find(
+      (c) => c.toLowerCase() === urlCat.toLowerCase()
+    );
+    if (match) setSelectedCategory(match);
+  }, [categories, loading, searchParams]);
 
   const maxPrice = useMemo(
     () => Math.max(...products.map((p) => p.price), 100000),
@@ -296,7 +318,10 @@ export default function ProductsPage() {
           p.description?.toLowerCase().includes(q)
       );
     }
-    if (selectedCategory !== "All") list = list.filter((p) => p.category === selectedCategory);
+    if (selectedCategory !== "All")
+      list = list.filter(
+        (p) => p.category?.toLowerCase() === selectedCategory.toLowerCase()
+      );
     list = list.filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1]);
     if (inStockOnly) list = list.filter((p) => p.stock > 0);
     switch (sortBy) {
@@ -569,5 +594,13 @@ export default function ProductsPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDF8F5]" />}>
+      <ProductsPageInner />
+    </Suspense>
   );
 }
