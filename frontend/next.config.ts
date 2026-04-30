@@ -19,8 +19,9 @@ const nextConfig: NextConfig = {
   // Allow ngrok and local network origins during development
   allowedDevOrigins: [
     "*.ngrok-free.app",
-    "*.ngrok-free.dev", 
+    "*.ngrok-free.dev",
     "*.ngrok.io",
+    "10.56.181.92",  // local LAN IP — allows phone access via QR code
   ],
 };
 

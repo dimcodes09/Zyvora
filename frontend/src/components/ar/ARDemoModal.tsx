@@ -25,16 +25,18 @@ interface DragOrigin {
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// Set your machine's local IP here (or via .env.local → NEXT_PUBLIC_LOCAL_IP)
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+// Prefer explicit env var; falls back to the current origin at runtime.
+// The /ar route lives on the same Next.js app, so no env var is needed in prod.
+const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "";
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function buildArUrl(productId: string) {
-  if (!baseUrl) {
-    console.error("BASE URL missing");
-    return "";
-  }
-  return `${baseUrl}/ar?productId=${productId}`;
+  // Use configured URL first, otherwise derive from current window origin
+  const origin =
+    configuredBaseUrl ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  if (!origin) return "";
+  return `${origin}/ar?productId=${productId}`;
 }
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
@@ -494,7 +496,7 @@ export default function ARDemoModal({ isOpen, onClose, product }: ARDemoModalPro
                   margin: 0, fontSize: "11px", color: "#B89BA0",
                   textAlign: "center", maxWidth: "340px", lineHeight: "1.6",
                 }}>
-                  💡 To change the local IP, set <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>NEXT_PUBLIC_LOCAL_IP</code> in your <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>.env.local</code>
+                  💡 The QR code links to the AR page on this site. Optionally override with <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>NEXT_PUBLIC_BASE_URL</code> in <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>.env.local</code> for a custom domain.
                 </p>
               </div>
             )}

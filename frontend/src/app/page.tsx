@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <main className="bg-[var(--warm-white)]">
 
-      {/* 🔥 IMPORTANT: spacing for fixed navbar */}
+      {/* spacing for fixed navbar */}
       <div className="h-[70px]" />
 
       {/* HERO */}
@@ -44,26 +44,22 @@ export default function HomePage() {
       </section>
 
       {/* COLLECTIONS */}
-            <section id="collections" className="scroll-mt-24">
+      <section id="collections" className="scroll-mt-24">
         <Categories />
       </section>
-
-
 
       {/* AR DEMO */}
       <section id="ar-demo" className="scroll-mt-24">
         <ARDemo />
       </section>
 
-      
-
       {/* TESTIMONIALS */}
       <section className="scroll-mt-24">
         <Testimonials />
       </section>
 
-        {/* AI SEARCH */}
-         <section className="scroll-mt-24">
+      {/* AI SEARCH — id used by Navbar to scroll here */}
+      <section id="ai-search" className="scroll-mt-24">
         <AISearch />
       </section>
 
