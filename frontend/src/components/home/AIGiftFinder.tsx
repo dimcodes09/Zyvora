@@ -2,12 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useZyvoraChat, type ChatMsg, type ChatProduct } from "@/hooks/useZyvoraChat";
+import { resolveProductImage } from "@/lib/productImage";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-// Strip the /api suffix so image paths like /uploads/foo.jpg resolve correctly
-const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
-const BACKEND_URL = _apiUrl.replace(/\/api\/?$/, ""); // → "http://localhost:5000"
 
 const TAGS = ["✦ Birthday Gifts", "✦ Anniversary", "✦ Weddings", "✦ Just Because"] as const;
 
@@ -17,11 +14,6 @@ function formatPrice(price: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency", currency: "INR", maximumFractionDigits: 0,
   }).format(price);
-}
-
-function resolveImage(src?: string) {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
 }
 
 // ── Product card inside chat ──────────────────────────────────────────────────
@@ -37,7 +29,7 @@ function ChatProductCard({ product }: { product: ChatProduct }) {
         style={{ minWidth: "3.5rem" }}
       >
         <img
-          src={resolveImage(product.image)}
+          src={resolveProductImage(product.image)}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}

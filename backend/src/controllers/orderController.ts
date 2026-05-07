@@ -18,7 +18,7 @@ export const createOrder = async (
 
     const cart = await Cart.findOne({ user: userId }).populate<{
       items: PopulatedCartItem[];
-    }>('items.product', 'name price stock');
+    }>('items.product', 'name price stock sellerId');
 
     if (!cart || cart.items.length === 0) {
       return next(new AppError('Your cart is empty.', 400));
@@ -43,7 +43,16 @@ export const createOrder = async (
       product: item.product._id,
       quantity: item.quantity,
       priceAtPurchase: item.product.price,
+      name: item.product.name,
     }));
+
+    const sellerIds = [
+      ...new Set(
+        cart.items
+          .map((item) => item.product.sellerId?.toString())
+          .filter((sellerId): sellerId is string => Boolean(sellerId))
+      ),
+    ];
 
     const totalPrice = Number(
       items
@@ -53,9 +62,11 @@ export const createOrder = async (
 
     const order = await Order.create({
       user: userId,
+      ...(sellerIds.length === 1 && { seller: sellerIds[0] }),
       items,
       totalPrice,
       status: 'pending',
+      paymentMethod: 'cod',
     });
 
     // Clear cart

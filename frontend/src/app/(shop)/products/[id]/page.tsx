@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getProductById, getSimilarProducts } from "@/services/product.service";
+import { resolveProductImage, shouldUseUnoptimizedImage } from "@/lib/productImage";
 import { useCartStore } from "@/store/cart.store";
 import { Product } from "@/types";
 import {
@@ -18,13 +19,6 @@ import {
   RotateCcw,
   Shield,
 } from "lucide-react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-const resolveImage = (src?: string) => {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
-};
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function DetailSkeleton() {
@@ -50,7 +44,7 @@ function DetailSkeleton() {
 
 // ── Similar Product Mini Card ─────────────────────────────────────────────────
 function SimilarCard({ product }: { product: Product }) {
-  const imgSrc = resolveImage(product.image);
+  const imgSrc = resolveProductImage(product.image);
   return (
     <Link
       href={`/products/${product._id}`}
@@ -63,7 +57,7 @@ function SimilarCard({ product }: { product: Product }) {
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
           sizes="(max-width: 640px) 50vw, 25vw"
-          unoptimized={imgSrc.startsWith("http")}
+          unoptimized={shouldUseUnoptimizedImage(imgSrc)}
         />
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -154,7 +148,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const imgSrc  = resolveImage(product.image);
+  const imgSrc  = resolveProductImage(product.image);
   const inStock = product.stock > 0;
 
   return (
@@ -190,7 +184,7 @@ export default function ProductDetailPage() {
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
-              unoptimized={imgSrc.startsWith("http")}
+              unoptimized={shouldUseUnoptimizedImage(imgSrc)}
               priority
             />
             {!inStock && (

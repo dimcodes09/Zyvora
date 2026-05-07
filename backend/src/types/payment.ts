@@ -8,6 +8,7 @@ export interface PopulatedPaymentItem {
     name: string;
     price: number;
     stock: number;
+    sellerId?: Types.ObjectId;
   };
   quantity: number;
 }

@@ -9,14 +9,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useHamperContext } from "@/context/HamperContext";
 import HamperPreview from "@/components/HamperPreview";
 import type { HamperItem } from "@/hooks/useHamper";
-
-const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
-const BACKEND_URL = _apiUrl.replace(/\/api\/?$/, "");
-
-function resolveImage(src?: string) {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
-}
+import { resolveProductImage } from "@/lib/productImage";
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -157,7 +150,7 @@ function ItemRow({ item, index }: ItemRowProps) {
         }}
       >
         <img
-          src={resolveImage(item.image)}
+          src={resolveProductImage(item.image)}
           alt={item.name}
           className="w-full h-full object-cover"
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}

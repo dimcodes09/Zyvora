@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import Cookies from "js-cookie";
 import { User } from "@/types";
 import * as AuthService from "@/services/auth.service";
 import { useCartStore } from "@/store/cart.store";
@@ -87,6 +88,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   // ✅ FETCH CURRENT USER (on app load)
   fetchMe: async () => {
+    if (typeof window !== "undefined" && !Cookies.get("token")) {
+      set({ user: null, hydrated: true });
+
+      const { resetCart } = useCartStore.getState();
+      resetCart();
+      return;
+    }
+
     try {
       const user = await AuthService.getMe();
       set({ user });

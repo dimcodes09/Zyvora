@@ -608,6 +608,19 @@ export default function Navbar() {
               <span style={{ fontWeight: 400, opacity: 0.8 }}>+</span>
               Cart ({count})
             </Link>
+            <button
+  onClick={() => router.push("/search")}
+  className="nb-link"
+  style={{
+    fontSize: "0.65rem",
+    fontWeight: 600,
+    letterSpacing: "0.13em",
+    textTransform: "uppercase",
+  }}
+>
+  Search
+</button>
+            
           </div>
 
         </div>

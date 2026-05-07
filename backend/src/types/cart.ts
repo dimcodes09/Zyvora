@@ -32,6 +32,7 @@ export interface PopulatedCartItem {
     name: string;
     price: number;
     stock: number;
+    sellerId?: Types.ObjectId;
   };
   quantity: number;
 }

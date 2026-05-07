@@ -20,6 +20,7 @@ import aiRoutes from './routes/aiRoutes.js';
 
 // ✅ NEW
 import hamperRoutes from './routes/hamperRoutes.js';
+import sellerRoutes from "./routes/sellerRoutes.js";
 
 const app: Application = express();
 
@@ -28,22 +29,13 @@ app.use(helmet());
 
 app.use(
   cors({
-    // ✅ Dynamic origin: allow localhost + any *.vercel.app URL (handles preview deploys)
-    origin: (origin, callback) => {
-      const allowed = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-      ];
-      // Allow requests with no origin (server-to-server, Postman)
-      if (!origin) return callback(null, true);
-      // Allow any Vercel deployment URL
-      if (origin.endsWith(".vercel.app") || allowed.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error(`CORS: origin ${origin} not allowed`));
-    },
+    origin: [
+      "http://localhost:3000",
+      "https://zyvora-livid.vercel.app", // ✅ no trailing slash
+      "https://www.zyvora-livid.vercel.app", // optional www variant
+    ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -54,8 +46,8 @@ if (config.env !== 'test') {
 }
 
 // ─── Body Parsing ─────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // ─── RATE LIMITERS ───────────────────────────────────────────
 
@@ -103,6 +95,8 @@ app.use('/api/ai', aiRoutes);
 
 // ✅ NEW HAMPPER ROUTE
 app.use('/api/hamper', hamperRoutes);
+
+app.use("/api/seller", sellerRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────
 app.use(notFound);

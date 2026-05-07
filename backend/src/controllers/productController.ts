@@ -150,12 +150,12 @@ export const getSimilarProducts = async (
     const { category, price } = product as unknown as { category: string; price: number };
 
     const priceFloor = price * 0.7;
-    const priceCeil  = price * 1.3;
+    const priceCeil = price * 1.3;
 
     const similar = await Product.find({
-      _id:      { $ne: id },
+      _id: { $ne: id },
       category: category,
-      price:    { $gte: priceFloor, $lte: priceCeil },
+      price: { $gte: priceFloor, $lte: priceCeil },
     })
       .select('-__v')
       .lean();
@@ -174,3 +174,37 @@ export const getSimilarProducts = async (
   }
 };
 // ← ADD UNTIL HERE
+
+// ─── GET /api/products/search ───────────────────────────
+export const searchProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { q } = req.query as { q?: string };
+
+    if (!q) {
+      res.status(400).json({ success: false });
+      return;
+    }
+
+    // Search across name OR category so "floral", "bags", "watches" etc. all work
+    const products = await Product.find({
+      $or: [
+        { name:     { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
+      ],
+    })
+      .select("-__v")
+      .limit(3)
+      .lean();
+
+    res.json({
+      success: true,
+      data: products,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

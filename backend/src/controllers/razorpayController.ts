@@ -23,7 +23,7 @@ export const createRazorpayOrder = async (
 
     const cart = await Cart.findOne({ user: userId }).populate<{
       items: PopulatedPaymentItem[];
-    }>('items.product', 'name price stock');
+    }>('items.product', 'name price stock sellerId');
 
     if (!cart || cart.items.length === 0) {
       next(new AppError('Your cart is empty.', 400));
@@ -48,7 +48,16 @@ export const createRazorpayOrder = async (
       product: item.product._id,
       quantity: item.quantity,
       priceAtPurchase: item.product.price,
+      name: item.product.name,
     }));
+
+    const sellerIds = [
+      ...new Set(
+        cart.items
+          .map((item) => item.product.sellerId?.toString())
+          .filter((sellerId): sellerId is string => Boolean(sellerId))
+      ),
+    ];
 
     const totalPrice = parseFloat(
       orderItems
@@ -58,9 +67,11 @@ export const createRazorpayOrder = async (
 
     const order = await Order.create({
       user: userId,
+      ...(sellerIds.length === 1 && { seller: sellerIds[0] }),
       items: orderItems,
       totalPrice,
       status: 'pending',
+      paymentMethod: 'razorpay',
     });
 
     const razorpayOrder = await razorpay.orders.create({

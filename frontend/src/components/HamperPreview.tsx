@@ -5,14 +5,7 @@
 // Logic/structure unchanged — only CSS/animation layer added.
 
 import type { HamperItem } from "@/hooks/useHamper";
-
-const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
-const BACKEND_URL = _apiUrl.replace(/\/api\/?$/, "");
-
-function resolveImage(src?: string) {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
-}
+import { resolveProductImage } from "@/lib/productImage";
 
 type SlotStyle = {
   top?: string; bottom?: string; left?: string; right?: string;
@@ -220,7 +213,7 @@ export default function HamperPreview({ items, size = 260 }: HamperPreviewProps)
                     }}
                   >
                     <img
-                      src={resolveImage(item.image)}
+                      src={resolveProductImage(item.image)}
                       alt={item.name}
                       className="w-full h-full object-cover"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}

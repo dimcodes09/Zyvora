@@ -10,12 +10,17 @@ import {
 
 import { Product } from "../models/Product.js";
 
+import { searchProducts } from "../controllers/productController.js";
+
 const router = Router();
 
 // ── BASE ROUTES ─────────────────────────────────────────
 
 // GET all + CREATE
 router.route("/").get(getProducts).post(createProduct);
+
+//SEARCH
+router.get("/search", searchProducts);
 
 // ── REELS ROUTE (IMPORTANT: BEFORE /:id) ────────────────
 
@@ -52,4 +57,5 @@ router
   .put(updateProduct)
   .delete(deleteProduct);
 
+  
 export default router;

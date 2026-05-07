@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getProductById, updateProduct } from "@/services/product.service";
 import { useRouter, useParams } from "next/navigation";
 import AdminGuard from "@/components/admin/AdminGuard";
+import { resolveProductImage } from "@/lib/productImage";
 
 function EditProductContent() {
   const router = useRouter();
@@ -55,6 +56,11 @@ function EditProductContent() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    if (!/^https?:\/\/.+/i.test(form.image.trim())) {
+      setError("Image must be a full URL, for example a Cloudinary link.");
+      setLoading(false);
+      return;
+    }
     try {
       await updateProduct(id, {
         ...form,
@@ -63,8 +69,8 @@ function EditProductContent() {
         reelVideo: form.reelVideo.trim() || null,  // ← send null when cleared
       });
       router.push("/admin/products");
-    } catch (err: any) {
-      setError(err?.message || "Failed to update product.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update product.");
     } finally {
       setLoading(false);
     }
@@ -104,8 +110,23 @@ function EditProductContent() {
         </Field>
 
         <Field label="Image URL">
-          <input name="image" value={form.image} onChange={handleChange} required />
+          <input
+            name="image"
+            value={form.image}
+            onChange={handleChange}
+            placeholder="https://res.cloudinary.com/.../product.jpg"
+            required
+          />
         </Field>
+
+        {form.image.trim() && (
+          <img
+            src={resolveProductImage(form.image)}
+            alt="Product preview"
+            className="h-40 w-full rounded object-cover border border-gray-200"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+          />
+        )}
 
         {/* ── Reel Video — optional ─────────────────────────── */}
         <div className="flex flex-col gap-1">

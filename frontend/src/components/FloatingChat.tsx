@@ -2,11 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useZyvoraChat, type ChatMsg, type ChatProduct } from "@/hooks/useZyvoraChat";
+import { resolveProductImage } from "@/lib/productImage";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
-const BACKEND_URL = _apiUrl.replace(/\/api\/?$/, "");
 
 const SUGGESTION_CHIPS = [
   "Birthday gift under ₹2000",
@@ -25,11 +23,6 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-function resolveImage(src?: string) {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
-}
-
 // ── Product Card ──────────────────────────────────────────────────────────────
 
 function ChatProductCard({ product }: { product: ChatProduct }) {
@@ -41,7 +34,7 @@ function ChatProductCard({ product }: { product: ChatProduct }) {
     >
       <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[#FAF0F1]">
         <img
-          src={resolveImage(product.image)}
+          src={resolveProductImage(product.image)}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={(e) => {

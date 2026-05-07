@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, KeyboardEvent } from "react";
+import { resolveProductImage } from "@/lib/productImage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,13 +49,11 @@ function ShimmerCard() {
   );
 }
 
-const BACKEND_URL = "http://localhost:5000";
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80";
 
 function getImageSrc(image?: string): string {
   if (!image) return FALLBACK_IMG;
-  if (image.startsWith("http")) return image;
-  return `${BACKEND_URL}${image.startsWith("/") ? "" : "/"}${image}`;
+  return resolveProductImage(image);
 }
 
 function ProductCard({ product }: { product: Product }) {

@@ -5,15 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { getProducts } from "@/services/product.service";
+import { resolveProductImage, shouldUseUnoptimizedImage } from "@/lib/productImage";
 import { Product } from "@/types";
 import { SlidersHorizontal, X, ChevronDown, Search, Loader2, Sparkles } from "lucide-react";
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
-const resolveImage = (src?: string) => {
-  if (!src || src.trim() === "") return "/placeholder.png";
-  return src.startsWith("http") ? src : `${BACKEND_URL}${src}`;
-};
 
 // ── Sort options ──────────────────────────────────────────────────────────────
 type SortKey = "featured" | "az" | "za" | "price-asc" | "price-desc" | "date-asc" | "date-desc";
@@ -104,9 +98,14 @@ function AISearchBar({ value, onChange }: AISearchBarProps) {
     console.log("[AISearch] input →", JSON.stringify(q));
 
     if (!q) {
-      setSuggestions([]);
-      setShowDropdown(false);
-      return;
+      debounceRef.current = setTimeout(() => {
+        setSuggestions([]);
+        setShowDropdown(false);
+      }, 0);
+
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
     }
 
     debounceRef.current = setTimeout(async () => {
@@ -256,7 +255,9 @@ function ProductsPageInner() {
   const [loading, setLoading]                   = useState(true);
   const [error, setError]                       = useState<string | null>(null);
   const [search, setSearch]                     = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    () => searchParams.get("category") ?? "All"
+  );
   const [priceRange, setPriceRange]             = useState<[number, number]>([0, 100000]);
   const [inStockOnly, setInStockOnly]           = useState(false);
   const [sortBy, setSortBy]                     = useState<SortKey>("featured");
@@ -271,13 +272,6 @@ function ProductsPageInner() {
       .catch(() => setError("Failed to load products."))
       .finally(() => setLoading(false));
   }, []);
-
-  // Pre-select category from URL ?category= param (case-insensitive)
-  useEffect(() => {
-    const urlCat = searchParams.get("category");
-    if (!urlCat) return;
-    setSelectedCategory(urlCat); // stored lowercase, matched below
-  }, [searchParams]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -299,8 +293,11 @@ function ProductsPageInner() {
     const match = categories.find(
       (c) => c.toLowerCase() === urlCat.toLowerCase()
     );
-    if (match) setSelectedCategory(match);
-  }, [categories, loading, searchParams]);
+    if (match && match !== selectedCategory) {
+      const timeout = setTimeout(() => setSelectedCategory(match), 0);
+      return () => clearTimeout(timeout);
+    }
+  }, [categories, loading, searchParams, selectedCategory]);
 
   const maxPrice = useMemo(
     () => Math.max(...products.map((p) => p.price), 100000),
@@ -538,7 +535,7 @@ function ProductsPageInner() {
                 filterOpen ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
               }`}>
                 {displayed.map((product) => {
-                  const imgSrc   = resolveImage(product.image);
+                  const imgSrc   = resolveProductImage(product.image);
                   const inStock  = product.stock > 0;
                   const lowStock = product.stock > 0 && product.stock <= 5;
                   return (
@@ -554,7 +551,7 @@ function ProductsPageInner() {
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-300"
                           sizes="(max-width: 640px) 50vw, 25vw"
-                          unoptimized={imgSrc.startsWith("http")}
+                          unoptimized={shouldUseUnoptimizedImage(imgSrc)}
                         />
                         {!inStock && (
                           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">

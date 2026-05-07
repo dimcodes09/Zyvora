@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
     "*.ngrok-free.app",
     "*.ngrok-free.dev",
     "*.ngrok.io",
-    "10.56.181.92",  // local LAN IP — allows phone access via QR code
+    "10.56.181.92", // local LAN IP — phone AR access
   ],
 };
 

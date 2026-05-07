@@ -8,10 +8,54 @@ import {
   createRazorpayOrder,
   verifyRazorpayPayment,
 } from "@/services/payment.service";
+import { createCashOnDeliveryOrder } from "@/services/order.service";
+import { resolveProductImage } from "@/lib/productImage";
 
 declare global {
-  interface Window { Razorpay: any; }
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
 }
+
+type RazorpayHandlerResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayFailedResponse = {
+  error?: {
+    description?: string;
+  };
+};
+
+type RazorpayOptions = {
+  key?: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  handler: (response: RazorpayHandlerResponse) => Promise<void>;
+  modal: { ondismiss: () => void };
+  theme: { color: string };
+};
+
+type RazorpayInstance = {
+  on: (event: "payment.failed", handler: (response: RazorpayFailedResponse) => void) => void;
+  open: () => void;
+};
+
+const getErrMsg = (e: unknown, fallback = "Something went wrong.") => {
+  if (e instanceof Error) return e.message;
+  if (
+    typeof e === "object" &&
+    e !== null &&
+    "message" in e &&
+    typeof (e as Record<string, unknown>).message === "string"
+  ) {
+    return (e as Record<string, string>).message;
+  }
+  return fallback;
+};
 
 const loadRazorpayScript = (): Promise<boolean> =>
   new Promise((resolve) => {
@@ -202,6 +246,77 @@ const STYLES = `
     color: #7B1728;
   }
 
+  .co-payment-title {
+    margin-top: 1.4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid rgba(180,120,120,0.12);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: #8A6060;
+    text-transform: uppercase;
+  }
+
+  .co-payment-options {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+  }
+
+  .co-payment-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid rgba(180,120,120,0.18);
+    background: #FFFDFC;
+    border-radius: 14px;
+    padding: 0.85rem 0.95rem;
+    color: #2C1810;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    text-align: left;
+  }
+
+  .co-payment-option.is-active {
+    border-color: rgba(123,23,40,0.38);
+    background: #FFF6F6;
+    box-shadow: 0 8px 24px rgba(123,23,40,0.08);
+  }
+
+  .co-payment-name {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
+  .co-payment-note {
+    display: block;
+    margin-top: 0.16rem;
+    font-size: 0.68rem;
+    color: #A07878;
+  }
+
+  .co-payment-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(123,23,40,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .co-payment-option.is-active .co-payment-dot::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7B1728;
+  }
+
   .co-btn {
     width: 100%;
     margin-top: 1.8rem;
@@ -304,6 +419,7 @@ function CheckoutInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
 
   useEffect(() => {
     if (!isHamper) fetchCart();
@@ -334,26 +450,55 @@ function CheckoutInner() {
         amount:   orderData.amount,
         currency: orderData.currency ?? "INR",
         order_id: orderData.razorpayOrderId,
-        handler: async (response: any) => {
+        handler: async (response: RazorpayHandlerResponse) => {
           try {
             await verifyRazorpayPayment(response);
             if (isHamper) hamper.clearHamper();
             else resetCart();
             setSuccess(true);
             setTimeout(() => router.push("/orders"), 2500);
-          } catch { setError("Payment verification failed."); }
+          } catch (e: unknown) { setError(getErrMsg(e, "Payment verification failed.")); }
           finally { setLoading(false); }
         },
         modal: { ondismiss: () => setLoading(false) },
         theme: { color: "#7B1728" },
       };
       const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (res: any) => {
+      rzp.on("payment.failed", (res: RazorpayFailedResponse) => {
         setError(res.error?.description || "Payment failed.");
         setLoading(false);
       });
       rzp.open();
-    } catch { setError("Could not initiate payment."); setLoading(false); }
+    } catch (e: unknown) { setError(getErrMsg(e, "Could not initiate payment.")); setLoading(false); }
+  };
+
+  const handleCashOnDelivery = async () => {
+    if (isHamper) {
+      setError("Cash on Delivery is available for cart checkout only right now.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await createCashOnDeliveryOrder();
+      resetCart();
+      setSuccess(true);
+      setTimeout(() => router.push("/orders"), 2500);
+    } catch (e: unknown) {
+      setError(getErrMsg(e, "Could not place Cash on Delivery order."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlaceOrder = () => {
+    if (paymentMethod === "cod") {
+      void handleCashOnDelivery();
+      return;
+    }
+
+    void handlePayment();
   };
 
   if (success) return (
@@ -405,7 +550,7 @@ function CheckoutInner() {
                     <div className="co-img-wrap">
                       {product.image ? (
                         <img
-                          src={product.image}
+                          src={resolveProductImage(product.image)}
                           alt={product.name}
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
@@ -461,18 +606,55 @@ function CheckoutInner() {
               <span className="co-total-val">₹{total.toLocaleString("en-IN")}</span>
             </div>
 
+            <p className="co-payment-title">Payment Method</p>
+            <div className="co-payment-options" role="radiogroup" aria-label="Payment method">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={paymentMethod === "razorpay"}
+                className={`co-payment-option ${paymentMethod === "razorpay" ? "is-active" : ""}`}
+                onClick={() => setPaymentMethod("razorpay")}
+              >
+                <span>
+                  <span className="co-payment-name">Razorpay</span>
+                  <span className="co-payment-note">UPI, cards, net banking, wallets</span>
+                </span>
+                <span className="co-payment-dot" />
+              </button>
+
+              {!isHamper && (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === "cod"}
+                  className={`co-payment-option ${paymentMethod === "cod" ? "is-active" : ""}`}
+                  onClick={() => setPaymentMethod("cod")}
+                >
+                  <span>
+                    <span className="co-payment-name">Cash on Delivery</span>
+                    <span className="co-payment-note">Pay when your order arrives</span>
+                  </span>
+                  <span className="co-payment-dot" />
+                </button>
+              )}
+            </div>
+
             {error && <p className="co-error">{error}</p>}
 
             <button
               className="co-btn"
-              onClick={handlePayment}
+              onClick={handlePlaceOrder}
               disabled={loading || total === 0}
             >
-              {loading ? "Processing..." : `Pay ₹${total.toLocaleString("en-IN")}`}
+              {loading
+                ? "Processing..."
+                : paymentMethod === "cod"
+                ? "Place COD Order"
+                : `Pay ₹${total.toLocaleString("en-IN")}`}
             </button>
 
             <p className="co-secure">
-              <span>🔒</span> Secured by Razorpay
+              {paymentMethod === "cod" ? "Pay at delivery" : "Secured by Razorpay"}
             </p>
           </div>
 

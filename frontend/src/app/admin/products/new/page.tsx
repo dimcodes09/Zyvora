@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createProduct } from "@/services/product.service";
 import { useRouter } from "next/navigation";
 import AdminGuard from "@/components/admin/AdminGuard";
+import { resolveProductImage } from "@/lib/productImage";
 
 function NewProductContent() {
   const router = useRouter();
@@ -29,6 +30,11 @@ function NewProductContent() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    if (!/^https?:\/\/.+/i.test(form.image.trim())) {
+      setError("Image must be a full URL, for example a Cloudinary link.");
+      setLoading(false);
+      return;
+    }
     try {
       await createProduct({
         ...form,
@@ -38,8 +44,8 @@ function NewProductContent() {
         reelVideo: form.reelVideo.trim() || null,
       });
       router.push("/admin/products");
-    } catch (err: any) {
-      setError(err?.message || "Failed to create product.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create product.");
     } finally {
       setLoading(false);
     }
@@ -77,8 +83,23 @@ function NewProductContent() {
         </Field>
 
         <Field label="Image URL">
-          <input name="image" value={form.image} onChange={handleChange} required />
+          <input
+            name="image"
+            value={form.image}
+            onChange={handleChange}
+            placeholder="https://res.cloudinary.com/.../product.jpg"
+            required
+          />
         </Field>
+
+        {form.image.trim() && (
+          <img
+            src={resolveProductImage(form.image)}
+            alt="Product preview"
+            className="h-40 w-full rounded object-cover border border-gray-200"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/placeholder.png"; }}
+          />
+        )}
 
         {/* ── Reel Video — optional ──────────────────────────────── */}
         <div className="flex flex-col gap-1">

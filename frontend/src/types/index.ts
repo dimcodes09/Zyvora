@@ -43,9 +43,9 @@ export interface Order {
 
   totalPrice: number; // ✅ FIXED
 
-  status: "pending" | "paid" | "shipped" | "delivered" | "cancelled"; // ✅ FIXED
+  status: "pending" | "paid" | "accepted" | "packed" | "shipped" | "delivered" | "cancelled";
 
-  paymentMethod: "stripe" | "razorpay";
+  paymentMethod: "stripe" | "razorpay" | "cod";
   createdAt: string;
 }
 

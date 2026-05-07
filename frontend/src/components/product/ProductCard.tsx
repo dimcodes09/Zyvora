@@ -3,13 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Product } from "@/types";
+import { resolveProductImage, shouldUseUnoptimizedImage } from "@/lib/productImage";
 import { ShoppingBag } from "lucide-react";
 
 export default function ProductCard({ product }: { product: Product }) {
-  const imgSrc =
-    product.image && product.image.trim() !== ""
-      ? product.image
-      : "/placeholder.png";
+  const imgSrc = resolveProductImage(product.image);
 
   return (
     <Link
@@ -24,7 +22,7 @@ export default function ProductCard({ product }: { product: Product }) {
           fill
           className="object-cover transition-transform duration-700 group-hover:scale-110"
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          unoptimized={imgSrc.startsWith("http")}
+          unoptimized={shouldUseUnoptimizedImage(imgSrc)}
         />
 
         {/* Overlay */}

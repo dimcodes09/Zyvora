@@ -7,10 +7,11 @@ interface DecodedToken extends JwtPayload {
   id?: string;
   _id?: string;
   email?: string;
+  role?: string;
 }
 
 const protect = (
-  req: Request & { user?: any },
+  req: Request & { user?: any; userId?: string; role?: string },
   res: Response,
   next: NextFunction
 ) => {
@@ -31,17 +32,23 @@ const protect = (
       process.env.JWT_SECRET as string
     ) as DecodedToken;
 
-    req.user = {
-      userId: decoded.userId || decoded.id || decoded._id,
-      email: decoded.email,
-    };
+    const userId = decoded.userId || decoded.id || decoded._id;
 
-    if (!req.user.userId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Invalid token payload.",
       });
     }
+
+    req.user = {
+      userId,
+      email: decoded.email,
+      role: decoded.role,
+    };
+
+    req.userId = userId;
+    if (decoded.role) req.role = decoded.role;
 
     next();
   } catch (err: any) {
@@ -58,4 +65,4 @@ const protect = (
 };
 
 export { protect };
-export default protect;
+export default protect;
