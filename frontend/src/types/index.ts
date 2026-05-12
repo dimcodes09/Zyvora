@@ -36,9 +36,11 @@ export interface Order {
     product: {
       _id: string;
       name: string;
-      price: number;
+      price?: number;
     };
     quantity: number;
+    priceAtPurchase: number;
+    name?: string;
   }[];
 
   totalPrice: number; // ✅ FIXED

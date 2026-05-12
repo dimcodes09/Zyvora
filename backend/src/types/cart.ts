@@ -21,7 +21,7 @@ export interface UpdateQuantityBody {
 // ─── Order Request Bodies ─────────────────────────────────────
 
 export interface UpdateOrderStatusBody {
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'accepted' | 'packed' | 'delivered' | 'cancelled';
 }
 
 // ─── Populated Item (after .populate) ────────────────────────

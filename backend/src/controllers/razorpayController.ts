@@ -2,14 +2,18 @@ import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
 import { razorpay } from '../utils/razorpay.js';
-import { Cart } from '../models/Cart.js';
 import { Order } from '../models/Order.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 import type { AuthRequest } from '../types/auth.js';
-import type { PopulatedPaymentItem, RazorpayVerifyBody } from '../types/payment.js';
+import type { RazorpayVerifyBody } from '../types/payment.js';
 
 import { config } from '../config/env.js';
+import {
+  buildCheckoutOrderData,
+  clearCheckoutSource,
+  getCheckoutSource,
+} from '../utils/checkoutSource.js';
 
 // ─── CREATE RAZORPAY ORDER ───────────────────────────────────
 
@@ -20,67 +24,28 @@ export const createRazorpayOrder = async (
 ): Promise<void> => {
   try {
     const { userId } = req as unknown as AuthRequest;
+    const source = getCheckoutSource(req.body?.source);
 
-    const cart = await Cart.findOne({ user: userId }).populate<{
-      items: PopulatedPaymentItem[];
-    }>('items.product', 'name price stock sellerId');
-
-    if (!cart || cart.items.length === 0) {
-      next(new AppError('Your cart is empty.', 400));
-      return;
-    }
-
-    const stockErrors: string[] = [];
-    for (const item of cart.items) {
-      if (item.product.stock < item.quantity) {
-        stockErrors.push(
-          `"${item.product.name}" has only ${item.product.stock} unit(s) in stock.`
-        );
-      }
-    }
-
-    if (stockErrors.length > 0) {
-      next(new AppError(stockErrors.join(' '), 400));
-      return;
-    }
-
-    const orderItems = cart.items.map((item) => ({
-      product: item.product._id,
-      quantity: item.quantity,
-      priceAtPurchase: item.product.price,
-      name: item.product.name,
-    }));
-
-    const sellerIds = [
-      ...new Set(
-        cart.items
-          .map((item) => item.product.sellerId?.toString())
-          .filter((sellerId): sellerId is string => Boolean(sellerId))
-      ),
-    ];
-
-    const totalPrice = parseFloat(
-      orderItems
-        .reduce((sum, item) => sum + item.priceAtPurchase * item.quantity, 0)
-        .toFixed(2)
-    );
+    const checkout = await buildCheckoutOrderData(userId, source);
 
     const order = await Order.create({
       user: userId,
-      ...(sellerIds.length === 1 && { seller: sellerIds[0] }),
-      items: orderItems,
-      totalPrice,
+      ...(checkout.seller ? { seller: checkout.seller } : {}),
+      items: checkout.items,
+      totalPrice: checkout.totalPrice,
       status: 'pending',
       paymentMethod: 'razorpay',
+      ...(checkout.notes ? { notes: checkout.notes } : {}),
     });
 
     const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(totalPrice * 100),
+      amount: Math.round(checkout.totalPrice * 100),
       currency: 'INR',
       receipt: String(order._id),
       notes: {
         orderId: String(order._id),
         userId,
+        source,
       },
     });
 
@@ -88,10 +53,7 @@ export const createRazorpayOrder = async (
       razorpayOrderId: razorpayOrder.id,
     });
 
-    await Cart.findOneAndUpdate(
-      { user: userId },
-      { $set: { items: [] } }
-    );
+    await clearCheckoutSource(userId, source);
 
     res.status(201).json({
       success: true,

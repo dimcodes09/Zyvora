@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { FilterQuery } from "mongoose";
+import { Types, type FilterQuery } from "mongoose";
 import type { SignOptions } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import Seller from "../models/Seller.js";
@@ -321,9 +321,10 @@ export const getSellerOrders = async (req: SellerRequest, res: Response): Promis
     }
 
     const orders = await Order.find(filter)
-      .populate("user", "name phone")
+      .populate("user", "name email phone")
       .populate("items.product", "name image")
       .sort({ createdAt: -1 })
+      .lean()
       .limit(100);
 
     res.status(200).json({ success: true, orders });
@@ -356,8 +357,10 @@ export const updateOrderStatus = async (req: SellerRequest, res: Response): Prom
     // Prevent illegal transitions
     const transitions: Record<string, string[]> = {
       pending: ["accepted", "cancelled"],
+      paid: ["accepted", "cancelled"],
       accepted: ["packed", "cancelled"],
       packed: ["delivered"],
+      shipped: ["delivered"],
       delivered: [],
       cancelled: [],
     };
@@ -375,7 +378,12 @@ export const updateOrderStatus = async (req: SellerRequest, res: Response): Prom
     order.status = status;
     await order.save();
 
-    res.status(200).json({ success: true, message: "Order updated", order });
+    const updatedOrder = await Order.findById(order._id)
+      .populate("user", "name email phone")
+      .populate("items.product", "name image")
+      .lean();
+
+    res.status(200).json({ success: true, message: "Order updated", order: updatedOrder });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update order" });
   }
@@ -389,15 +397,22 @@ export const getDashboardStats = async (req: SellerRequest, res: Response): Prom
     const { Product } = await import("../models/Product.js");
     const sellerId = req.seller?.id;
 
+    if (!sellerId) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
     const [todaysOrders, totalOrders, products, earnings] = await Promise.all([
-      Order.find({ seller: sellerId, createdAt: { $gte: todayStart } }).select("status totalPrice items"),
+      Order.find({ seller: sellerId, createdAt: { $gte: todayStart } })
+        .select("status totalPrice items createdAt")
+        .sort({ createdAt: -1 }),
       Order.countDocuments({ seller: sellerId }),
       Product.find({ sellerId }).select("name stock price isActive"),
       Order.aggregate([
-        { $match: { seller: new (await import("mongoose")).default.Types.ObjectId(sellerId), status: "delivered" } },
+        { $match: { seller: new Types.ObjectId(sellerId), status: "delivered" } },
         { $group: { _id: null, total: { $sum: "$totalPrice" } } },
       ]),
     ]);

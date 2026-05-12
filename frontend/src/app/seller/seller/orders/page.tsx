@@ -10,16 +10,18 @@ const FILTERS = [
   { label: "Delivered", value: "delivered" }, { label: "Cancelled", value: "cancelled" },
 ];
 const STATUS_LABELS: Record<string, string> = {
-  pending: "New Order", accepted: "Accepted", packed: "Packed", delivered: "Delivered", cancelled: "Cancelled",
+  pending: "New Order", paid: "Paid", accepted: "Accepted", packed: "Packed", delivered: "Delivered", cancelled: "Cancelled",
 };
 const STATUS_COLORS: Record<string, string> = {
   pending:   "bg-yellow-900/50 text-yellow-300 border-yellow-700/40",
+  paid:      "bg-cyan-900/50 text-cyan-300 border-cyan-700/40",
   accepted:  "bg-blue-900/50 text-blue-300 border-blue-700/40",
   packed:    "bg-purple-900/50 text-purple-300 border-purple-700/40",
   delivered: "bg-green-900/50 text-green-300 border-green-700/40",
   cancelled: "bg-red-900/50 text-red-300 border-red-700/40",
 };
 const NEXT_STATUS: Record<string, { label: string; value: string }> = {
+  paid:     { label: "Accept Order",       value: "accepted"  },
   pending:  { label: "✓ Accept Order",    value: "accepted"  },
   accepted: { label: "📦 Mark as Packed", value: "packed"    },
   packed:   { label: "🚀 Mark Delivered", value: "delivered" },
@@ -35,6 +37,10 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+function getItemName(item: SellerOrder["items"][number]) {
+  return item.name || item.product?.name || "Product";
+}
+
 export default function SellerOrdersPage() {
   const [orders, setOrders]     = useState<SellerOrder[]>([]);
   const [filter, setFilter]     = useState("");
@@ -45,18 +51,24 @@ export default function SellerOrdersPage() {
   const load = useCallback(async (status?: string) => {
     setLoading(true);
     try { const res = await getOrders(status || undefined); setOrders(res.orders || []); }
-    catch (e) { console.error(e); }
+    catch { setOrders([]); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(filter); }, [filter, load]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void load(filter);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [filter, load]);
 
   const handleUpdate = async (orderId: string, status: string) => {
     setUpdating(orderId);
     try {
       await updateOrderStatus(orderId, status);
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
-    } catch (e) { console.error(e); }
+    } catch {}
     finally { setUpdating(null); }
   };
 
@@ -117,7 +129,8 @@ export default function SellerOrdersPage() {
             {orders.map((order) => {
               const isExpanded = expanded === order._id;
               const next = NEXT_STATUS[order.status];
-              const canCancel = ["pending", "accepted"].includes(order.status);
+              const canCancel = ["pending", "paid", "accepted"].includes(order.status);
+              const customerContact = order.user?.phone ?? order.user?.email;
               return (
                 <div key={order._id} className="rounded-2xl border border-rose-800/30 overflow-hidden"
                   style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -135,13 +148,13 @@ export default function SellerOrdersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_COLORS[order.status] ?? ""}`}>
-                          {STATUS_LABELS[order.status]}
+                          {STATUS_LABELS[order.status] ?? order.status}
                         </span>
                         <span className="text-rose-600 text-sm">{isExpanded ? "▲" : "▼"}</span>
                       </div>
                     </div>
                     <p className="text-sm text-rose-300/50 line-clamp-1">
-                      {order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
+                      {order.items.map((i) => `${getItemName(i)} ×${i.quantity}`).join(", ")}
                     </p>
                   </div>
 
@@ -153,7 +166,7 @@ export default function SellerOrdersPage() {
                         <div className="space-y-1.5">
                           {order.items.map((item, i) => (
                             <div key={i} className="flex justify-between text-sm">
-                              <span className="text-rose-200">{item.name} <span className="text-rose-400/50">×{item.quantity}</span></span>
+                              <span className="text-rose-200">{getItemName(item)} <span className="text-rose-400/50">×{item.quantity}</span></span>
                               <span className="text-rose-100 font-medium">₹{item.priceAtPurchase * item.quantity}</span>
                             </div>
                           ))}
@@ -168,9 +181,14 @@ export default function SellerOrdersPage() {
                         <div className="rounded-xl p-3 border border-rose-800/30" style={{ background: "rgba(255,255,255,0.03)" }}>
                           <p className="text-xs font-semibold text-rose-400/60 uppercase tracking-wide mb-1.5">Customer</p>
                           <p className="text-sm font-medium text-rose-100">{order.user.name}</p>
-                          <a href={`tel:${order.user.phone}`} className="text-rose-400 text-sm mt-0.5 flex items-center gap-1">
-                            📞 {order.user.phone}
-                          </a>
+                          {customerContact && (
+                            <a
+                              href={order.user.phone ? `tel:${order.user.phone}` : `mailto:${customerContact}`}
+                              className="text-rose-400 text-sm mt-0.5 flex items-center gap-1"
+                            >
+                              📞 {customerContact}
+                            </a>
+                          )}
                         </div>
                       )}
 

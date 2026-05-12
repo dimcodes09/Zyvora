@@ -10,16 +10,18 @@ import { useSeller } from "@/context/SellerContext";
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   "bg-yellow-100 text-yellow-800",
+  paid:      "bg-cyan-100 text-cyan-800",
   accepted:  "bg-blue-100 text-blue-800",
   packed:    "bg-purple-100 text-purple-800",
   delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
 };
 const STATUS_LABELS: Record<string, string> = {
-  pending: "New", accepted: "Accepted", packed: "Packed", delivered: "Delivered", cancelled: "Cancelled",
+  pending: "New", paid: "Paid", accepted: "Accepted", packed: "Packed", delivered: "Delivered", cancelled: "Cancelled",
 };
 const NEXT_STATUS: Record<string, { label: string; value: string }> = {
   pending:  { label: "Accept Order",   value: "accepted"  },
+  paid:     { label: "Accept Order",   value: "accepted"  },
   accepted: { label: "Mark as Packed", value: "packed"    },
   packed:   { label: "Mark Delivered", value: "delivered" },
 };
@@ -29,6 +31,10 @@ function getGreeting() {
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function getItemName(item: SellerOrder["items"][number]) {
+  return item.name || item.product?.name || "Product";
 }
 
 export default function SellerDashboard() {
@@ -45,18 +51,28 @@ export default function SellerDashboard() {
       setStats(dashRes.stats);
       setLowStock(dashRes.lowStock || []);
       setOrders(ordersRes.orders || []);
-    } catch (e) { console.error(e); }
+    } catch {
+      setStats(null);
+      setLowStock([]);
+      setOrders([]);
+    }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [loadData]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: string) => {
     setUpdatingOrder(orderId);
     try {
       await updateOrderStatus(orderId, newStatus);
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
-    } catch (e) { console.error(e); }
+    } catch {}
     finally { setUpdatingOrder(null); }
   };
 
@@ -179,11 +195,11 @@ export default function SellerDashboard() {
                         <p className="font-bold text-rose-50 text-base">₹{order.totalPrice}</p>
                       </div>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[order.status] ?? ""}`}>
-                        {STATUS_LABELS[order.status]}
+                        {STATUS_LABELS[order.status] ?? order.status}
                       </span>
                     </div>
                     <p className="text-sm text-rose-300/60 mb-3 line-clamp-1">
-                      {order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}
+                      {order.items.map((i) => `${getItemName(i)} ×${i.quantity}`).join(", ")}
                     </p>
                     {next && (
                       <button onClick={() => handleStatusUpdate(order._id, next.value)}

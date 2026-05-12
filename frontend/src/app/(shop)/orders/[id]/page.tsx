@@ -73,20 +73,25 @@ export default function OrderDetailPage() {
       </div>
 
       <div className="border rounded-lg divide-y">
-        {order.items.map(({ product, quantity }) => (
-          <div key={product._id} className="flex justify-between px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">{product.name}</p>
-              <p className="text-xs text-gray-500">
-                ₹{product.price} × {quantity}
+        {order.items.map(({ product, quantity, priceAtPurchase, name }) => {
+          const itemName = name ?? product.name;
+          const itemPrice = priceAtPurchase ?? product.price ?? 0;
+
+          return (
+            <div key={product._id} className="flex justify-between px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">{itemName}</p>
+                <p className="text-xs text-gray-500">
+                  ₹{itemPrice} × {quantity}
+                </p>
+              </div>
+
+              <p className="text-sm font-semibold">
+                ₹{(itemPrice * quantity).toLocaleString()}
               </p>
             </div>
-
-            <p className="text-sm font-semibold">
-              ₹{(product.price * quantity).toLocaleString()}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-4 flex justify-between">

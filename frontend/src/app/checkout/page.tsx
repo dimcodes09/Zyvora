@@ -420,6 +420,7 @@ function CheckoutInner() {
   const [error, setError]     = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
+  const checkoutSource = isHamper ? "hamper" : "cart";
 
   useEffect(() => {
     if (!isHamper) fetchCart();
@@ -433,10 +434,14 @@ function CheckoutInner() {
       }))
     : (cart?.items ?? []);
 
+  const subtotal = isHamper
+    ? hamper.subtotal
+    : (cart?.subtotal ?? 0);
+
   // Unified total
   const total = isHamper
     ? hamper.total          // subtotal + packaging from HamperContext
-    : (cart?.subtotal ?? 0);
+    : subtotal;
 
   const handlePayment = async () => {
     setLoading(true);
@@ -444,7 +449,7 @@ function CheckoutInner() {
     const loaded = await loadRazorpayScript();
     if (!loaded) { setError("Payment gateway failed to load."); setLoading(false); return; }
     try {
-      const orderData = await createRazorpayOrder();
+      const orderData = await createRazorpayOrder(checkoutSource);
       const options = {
         key:      process.env.NEXT_PUBLIC_RAZORPAY_KEY,
         amount:   orderData.amount,
@@ -473,16 +478,12 @@ function CheckoutInner() {
   };
 
   const handleCashOnDelivery = async () => {
-    if (isHamper) {
-      setError("Cash on Delivery is available for cart checkout only right now.");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      await createCashOnDeliveryOrder();
-      resetCart();
+      await createCashOnDeliveryOrder(checkoutSource);
+      if (isHamper) hamper.clearHamper();
+      else resetCart();
       setSuccess(true);
       setTimeout(() => router.push("/orders"), 2500);
     } catch (e: unknown) {
@@ -581,7 +582,7 @@ function CheckoutInner() {
 
             <div className="co-row">
               <span className="co-row-label">Subtotal</span>
-              <span className="co-row-val">₹{total.toLocaleString("en-IN")}</span>
+              <span className="co-row-val">₹{subtotal.toLocaleString("en-IN")}</span>
             </div>
 
             {isHamper && (
@@ -622,21 +623,19 @@ function CheckoutInner() {
                 <span className="co-payment-dot" />
               </button>
 
-              {!isHamper && (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={paymentMethod === "cod"}
-                  className={`co-payment-option ${paymentMethod === "cod" ? "is-active" : ""}`}
-                  onClick={() => setPaymentMethod("cod")}
-                >
-                  <span>
-                    <span className="co-payment-name">Cash on Delivery</span>
-                    <span className="co-payment-note">Pay when your order arrives</span>
-                  </span>
-                  <span className="co-payment-dot" />
-                </button>
-              )}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={paymentMethod === "cod"}
+                className={`co-payment-option ${paymentMethod === "cod" ? "is-active" : ""}`}
+                onClick={() => setPaymentMethod("cod")}
+              >
+                <span>
+                  <span className="co-payment-name">Cash on Delivery</span>
+                  <span className="co-payment-note">Pay when your order arrives</span>
+                </span>
+                <span className="co-payment-dot" />
+              </button>
             </div>
 
             {error && <p className="co-error">{error}</p>}

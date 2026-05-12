@@ -22,7 +22,7 @@ export const createCheckoutSession = async (
     // ── 1. Load cart with live DB prices ──────────────────────
     const cart = await Cart.findOne({ user: userId }).populate<{
       items: PopulatedPaymentItem[];
-    }>('items.product', 'name price stock');
+    }>('items.product', 'name price stock sellerId');
 
     if (!cart || cart.items.length === 0) {
       next(new AppError('Your cart is empty.', 400));
@@ -48,7 +48,27 @@ export const createCheckoutSession = async (
       product: item.product._id,
       quantity: item.quantity,
       priceAtPurchase: item.product.price, // DB price — immutable snapshot
+      name: item.product.name,
     }));
+
+    const sellerIds = [
+      ...new Set(
+        cart.items
+          .map((item) => item.product.sellerId?.toString())
+          .filter((sellerId): sellerId is string => Boolean(sellerId))
+      ),
+    ];
+
+    const [sellerId] = sellerIds;
+    if (!sellerId) {
+      next(new AppError('Every product in the cart must be assigned to a seller.', 400));
+      return;
+    }
+
+    if (sellerIds.length > 1) {
+      next(new AppError('Please order products from one seller at a time.', 400));
+      return;
+    }
 
     const totalPrice = parseFloat(
       orderItems
@@ -60,9 +80,11 @@ export const createCheckoutSession = async (
     //    so orderId is available in session metadata
     const order = await Order.create({
       user: userId,
+      seller: sellerId,
       items: orderItems,
       totalPrice,
       status: 'pending',
+      paymentMethod: 'stripe',
     });
 
     // ── 5. Build Stripe line_items from DB prices ──────────────

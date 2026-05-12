@@ -1,10 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
 import { Order } from '../models/Order.js';
-import { Cart } from '../models/Cart.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { AuthRequest } from '../types/auth.js';
-import type { PopulatedCartItem, UpdateOrderStatusBody } from '../types/cart.js';
+import type { UpdateOrderStatusBody } from '../types/cart.js';
+import {
+  buildCheckoutOrderData,
+  clearCheckoutSource,
+  getCheckoutSource,
+} from '../utils/checkoutSource.js';
 
 // ─── POST /api/orders ─────────────────────────────────────────
 
@@ -15,68 +19,24 @@ export const createOrder = async (
 ): Promise<void> => {
   try {
     const userId = (req as AuthRequest).userId;
+    const source = getCheckoutSource(req.body?.source);
 
-    const cart = await Cart.findOne({ user: userId }).populate<{
-      items: PopulatedCartItem[];
-    }>('items.product', 'name price stock sellerId');
-
-    if (!cart || cart.items.length === 0) {
-      return next(new AppError('Your cart is empty.', 400));
-    }
-
-    // Validate stock
-    const stockErrors: string[] = [];
-
-    for (const item of cart.items) {
-      if (item.product.stock < item.quantity) {
-        stockErrors.push(
-          `"${item.product.name}" has only ${item.product.stock} unit(s).`
-        );
-      }
-    }
-
-    if (stockErrors.length > 0) {
-      return next(new AppError(stockErrors.join(' '), 400));
-    }
-
-    const items = cart.items.map((item) => ({
-      product: item.product._id,
-      quantity: item.quantity,
-      priceAtPurchase: item.product.price,
-      name: item.product.name,
-    }));
-
-    const sellerIds = [
-      ...new Set(
-        cart.items
-          .map((item) => item.product.sellerId?.toString())
-          .filter((sellerId): sellerId is string => Boolean(sellerId))
-      ),
-    ];
-
-    const totalPrice = Number(
-      items
-        .reduce((sum, item) => sum + item.priceAtPurchase * item.quantity, 0)
-        .toFixed(2)
-    );
+    const checkout = await buildCheckoutOrderData(userId, source);
 
     const order = await Order.create({
       user: userId,
-      ...(sellerIds.length === 1 && { seller: sellerIds[0] }),
-      items,
-      totalPrice,
+      ...(checkout.seller ? { seller: checkout.seller } : {}),
+      items: checkout.items,
+      totalPrice: checkout.totalPrice,
       status: 'pending',
       paymentMethod: 'cod',
+      ...(checkout.notes ? { notes: checkout.notes } : {}),
     });
 
-    // Clear cart
-    await Cart.findOneAndUpdate(
-      { user: userId },
-      { $set: { items: [] } }
-    );
+    await clearCheckoutSource(userId, source);
 
     const populated = await Order.findById(order._id)
-      .populate('items.product', 'name category')
+      .populate('items.product', 'name category price image')
       .lean();
 
     res.status(201).json({ success: true, data: populated });
@@ -96,7 +56,7 @@ export const getUserOrders = async (
     const userId = (req as AuthRequest).userId;
 
     const orders = await Order.find({ user: userId })
-      .populate('items.product', 'name category')
+      .populate('items.product', 'name category price image')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -130,7 +90,7 @@ export const getOrderById = async (
     }
 
     const order = await Order.findById(orderId)
-      .populate('items.product', 'name category')
+      .populate('items.product', 'name category price image')
       .lean();
 
     if (!order) return next(new AppError('Order not found.', 404));
@@ -168,7 +128,8 @@ export const updateOrderStatus = async (
     const validStatuses = [
       'pending',
       'paid',
-      'shipped',
+      'accepted',
+      'packed',
       'delivered',
       'cancelled',
     ];
@@ -177,15 +138,37 @@ export const updateOrderStatus = async (
       return next(new AppError('Invalid status.', 400));
     }
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true, runValidators: true }
-    )
-      .populate('items.product', 'name category')
-      .lean();
+    const existingOrder = await Order.findById(orderId);
 
-    if (!order) return next(new AppError('Order not found.', 404));
+    if (!existingOrder) return next(new AppError('Order not found.', 404));
+
+    const transitions: Record<string, string[]> = {
+      pending: ['accepted', 'cancelled'],
+      paid: ['accepted', 'cancelled'],
+      accepted: ['packed', 'cancelled'],
+      packed: ['delivered'],
+      shipped: ['delivered'],
+      delivered: [],
+      cancelled: [],
+    };
+
+    const allowedNextStatuses = transitions[existingOrder.status] ?? [];
+
+    if (!allowedNextStatuses.includes(status)) {
+      return next(
+        new AppError(
+          `Cannot move order from '${existingOrder.status}' to '${status}'.`,
+          400
+        )
+      );
+    }
+
+    existingOrder.status = status;
+    await existingOrder.save();
+
+    const order = await Order.findById(existingOrder._id)
+      .populate('items.product', 'name category price image')
+      .lean();
 
     res.status(200).json({ success: true, data: order });
   } catch (error) {

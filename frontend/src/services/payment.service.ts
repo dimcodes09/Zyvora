@@ -1,5 +1,7 @@
 import api from "@/lib/axios";
 
+export type CheckoutSource = "cart" | "hamper";
+
 export interface RazorpayOrderResponse {
   success: boolean;
   razorpayOrderId: string;
@@ -21,11 +23,12 @@ export interface RazorpayVerifyResponse {
   status: string;
 }
 
-// ✅ Create Razorpay order (uses cart from DB)
+// ✅ Create Razorpay order (uses cart or hamper from DB)
 export const createRazorpayOrder =
-  async (): Promise<RazorpayOrderResponse> => {
+  async (source: CheckoutSource = "cart"): Promise<RazorpayOrderResponse> => {
     const { data } = await api.post<RazorpayOrderResponse>(
-      "/payments/razorpay/create-order"
+      "/payments/razorpay/create-order",
+      { source }
     );
     return data;
   };

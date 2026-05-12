@@ -189,9 +189,13 @@ export const updateProduct = (id: string, data: Record<string, unknown>) =>
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export interface OrderItem {
-  name: string;
+  name?: string;
   quantity: number;
   priceAtPurchase: number;
+  product?: {
+    name?: string;
+    image?: string;
+  };
 }
 
 export interface SellerOrder {
@@ -199,7 +203,7 @@ export interface SellerOrder {
   status: string;
   totalPrice: number;
   items: OrderItem[];
-  user?: { name: string; phone: string };
+  user?: { name?: string; email?: string; phone?: string };
   deliveryAddress?: string;
   notes?: string;
   createdAt: string;
