@@ -356,10 +356,14 @@ export default function AISearch() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
         @media (max-width: 640px) {
-          .zy-search-root { padding: 48px 20px 60px; }
+          .zy-search-root { padding: 48px 1.25rem 60px; }
           .zy-search-wrap { padding: 6px 6px 6px 20px; }
           .zy-btn { padding: 11px 18px; font-size: 11px; }
-          .zy-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+          .zy-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .card-img-wrap { height: 140px; }
+          .card-body { padding: 12px 14px 14px; }
+          .card-name { font-size: 12px; margin-bottom: 6px; }
+          .card-price { font-size: 15px; }
         }
       `}</style>
 

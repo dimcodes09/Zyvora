@@ -75,6 +75,39 @@ const STYLES = `
     z-index: 1;
     opacity: 0.4;
   }
+
+  /* ── Responsive New Arrivals ── */
+  @media (max-width: 1024px) {
+    .na-main-grid {
+      grid-template-columns: 1fr !important;
+      gap: 4rem !important;
+      text-align: center;
+    }
+    .na-video-wrap {
+      position: relative !important;
+      right: auto !important;
+      top: auto !important;
+      transform: rotate(0deg) !important;
+      margin: 2rem auto -2rem !important;
+      width: 80% !important;
+      max-width: 240px !important;
+      order: 2;
+    }
+    .na-card {
+      margin: 0 auto !important;
+      padding: 2rem 1.5rem !important;
+    }
+    .na-subtext {
+      margin: 0 auto 1.8rem !important;
+    }
+    .na-quote-wrap {
+      padding: 2rem 1rem !important;
+      align-items: center !important;
+    }
+    .na-quote-item {
+      text-align: center !important;
+    }
+  }
 `;
 
 /* ─── Heading marquee segment ─────────────────── */
@@ -237,16 +270,19 @@ export default function NewArrivals() {
         }} />
 
         {/* ── Main grid ─────────────────────────── */}
-        <div style={{
-          position: "relative", zIndex: 10,
-          width: "100%", maxWidth: 1280,
-          margin: "0 auto",
-          padding: "0 2.5rem",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "2rem",
-          alignItems: "center",
-        }}>
+        <div 
+          className="na-main-grid"
+          style={{
+            position: "relative", zIndex: 10,
+            width: "100%", maxWidth: 1280,
+            margin: "0 auto",
+            padding: "0 clamp(1rem, 5vw, 2.5rem)",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "2rem",
+            alignItems: "center",
+          }}
+        >
 
           {/* ═══════ LEFT: Card + Video ═══════ */}
           <div style={{ position: "relative", minHeight: 400 }}>
@@ -383,14 +419,17 @@ export default function NewArrivals() {
           </div>
 
           {/* ═══════ RIGHT: Quotes — pushed further right ═══════ */}
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1.8rem",
-            padding: "1rem 0 1rem 7rem",   /* more left padding = further right */
-          }}>
+          <div 
+            className="na-quote-wrap"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1.8rem",
+              padding: "1rem 0 1rem 7rem",   /* more left padding = further right */
+            }}
+          >
             {quotes.map((q, i) => (
-              <div key={i} className={`na-quote-${i}`} style={{ opacity: q.opacity, transition: "opacity 0.3s ease" }}>
+              <div key={i} className={`na-quote-${i} na-quote-item`} style={{ opacity: q.opacity, transition: "opacity 0.3s ease" }}>
                 <p style={{
                   fontFamily: "'Playfair Display', Georgia, serif",
                   fontStyle: "italic",

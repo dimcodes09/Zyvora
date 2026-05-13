@@ -249,25 +249,60 @@ const NAV_STYLES = `
   .dark .nb-suggestion-item       { color: #f5eaea; }
   .dark .nb-suggestion-item:hover { background: #2a2224; }
 
-  /* ── Dark toggle button ───────────────────────── */
-  .nb-dark-toggle {
-    display: flex; align-items: center; justify-content: center;
+  /* ── Mobile menu ─────────────────────────────── */
+  .nb-mobile-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
     background: none;
-    border: 1px solid rgba(180,120,120,0.28);
-    border-radius: 50%;
-    width: 28px; height: 28px;
+    border: none;
     cursor: pointer;
-    color: #8A6060;
-    transition: all 0.2s ease;
-    flex-shrink: 0; padding: 0;
+    color: #7B1728;
+    padding: 8px;
+    z-index: 110;
   }
-  .nb-dark-toggle:hover {
-    border-color: #8b1e2d; color: #8b1e2d;
-    background: rgba(139,30,45,0.07);
-    transform: scale(1.08);
+  @media (max-width: 1024px) {
+    .nb-mobile-toggle { display: flex; }
+    .nb-desktop-nav { display: none !important; }
+    .nb-search-wrap-desktop { display: none !important; }
   }
-  .dark .nb-dark-toggle { border-color: rgba(200,74,90,0.35); color: #c84a5a; }
-  .dark .nb-dark-toggle:hover { border-color: #c84a5a; background: rgba(200,74,90,0.12); }
+
+  .nb-mobile-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 280px;
+    background: #FDF8F5;
+    z-index: 200;
+    padding: 80px 2rem 2rem;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .nb-mobile-drawer.open {
+    transform: translateX(0);
+  }
+  .dark .nb-mobile-drawer {
+    background: #0F0B0C;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.4);
+  }
+
+  .nb-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+    z-index: 190;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .nb-mobile-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
 `;
 
 export default function Navbar() {
@@ -277,6 +312,7 @@ export default function Navbar() {
   const [activeHash, setActiveHash] = useState("");
   const [scrolled,   setScrolled]   = useState(false);
   const [isDark,     setIsDark]     = useState(false);
+  const [menuOpen,   setMenuOpen]   = useState(false);
 
   /* ── AI Search state ──────────────────────────── */
   const [searchQuery,   setSearchQuery]   = useState("");
@@ -421,14 +457,15 @@ export default function Navbar() {
         }}
       >
         <div
+          className="nb-container"
           style={{
             maxWidth: 1320,
             margin: "0 auto",
-            padding: "0 2.5rem",
+            padding: "0 clamp(1rem, 5vw, 2.5rem)",
             height: 70,
-            display: "grid",
-            gridTemplateColumns: "auto 1fr auto",
+            display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             gap: "1rem",
           }}
         >
@@ -438,7 +475,7 @@ export default function Navbar() {
             href="/"
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: "clamp(1.45rem, 2.2vw, 1.8rem)",
+              fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)",
               fontWeight: 800,
               fontStyle: "italic",
               letterSpacing: "0.06em",
@@ -446,15 +483,14 @@ export default function Navbar() {
               textDecoration: "none",
               whiteSpace: "nowrap",
               lineHeight: 1,
-              textAlign: "center",
               userSelect: "none",
             }}
           >
             Zyvora
           </Link>
 
-          {/* ── CENTER: Nav + AI Search ───────────── */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1.8rem" }}>
+          {/* ── CENTER: Nav + AI Search (Desktop) ───────────── */}
+          <div className="nb-desktop-nav" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1.8rem" }}>
 
             <nav style={{ display: "flex", alignItems: "center", gap: "1.8rem" }}>
 
@@ -480,7 +516,6 @@ export default function Navbar() {
                 );
               })}
 
-              {/* ── Reels — separated by a thin rule ── */}
               <span className="nb-divider" style={{ height: 14, margin: "0 0.1rem" }} />
 
               <Link
@@ -498,30 +533,11 @@ export default function Navbar() {
                 <span className="nb-reels-dot" />
                 Reels
               </Link>
-
-              {/* Admin nav link */}
-              {user?.role === "admin" && (
-                <Link
-                  href="/admin/products"
-                  className="nb-link"
-                  style={{
-                    fontSize: "0.65rem",
-                    fontWeight: 600,
-                    letterSpacing: "0.13em",
-                    textTransform: "uppercase",
-                    color: "#7B1728",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Admin
-                </Link>
-              )}
             </nav>
 
-            {/* ── AI Search Bar ──────────────────── */}
             <span className="nb-divider" style={{ height: 14 }} />
 
-            <div ref={searchWrapRef} style={{ position: "relative" }}>
+            <div ref={searchWrapRef} className="nb-search-wrap-desktop" style={{ position: "relative" }}>
               <div className="nb-search-wrap">
                 <input
                   type="text"
@@ -558,7 +574,6 @@ export default function Navbar() {
               </div>
               <span className="nb-ai-label">✦ AI Finder</span>
 
-              {/* Suggestions dropdown */}
               {showSugg && suggestions.length > 0 && (
                 <ul className="nb-suggestions">
                   {suggestions.map((s) => (
@@ -586,94 +601,37 @@ export default function Navbar() {
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-end",
-              gap: "2rem",
+              gap: "clamp(0.8rem, 2vw, 2rem)",
             }}
           >
-            {/* Thin separator */}
-            <span className="nb-divider" style={{ height: 16 }} />
-
-            {/* Auth */}
-            {user ? (
-              <>
-                <span style={{ fontSize: "0.68rem", color: "#8A6060", letterSpacing: "0.03em" }}>
-                  Hi, {user.name.split(" ")[0]}
-                </span>
-
-                {user.role === "admin" && (
-                  <Link
-                    href="/admin/products"
-                    style={{
-                      fontSize: "0.68rem",
-                      fontWeight: 600,
-                      color: "#8A6060",
-                      letterSpacing: "0.05em",
-                      textDecoration: "none",
-                      transition: "color 0.18s ease",
-                    }}
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#7B1728")}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#8A6060")}
+            {/* Desktop only bits */}
+            <div className="nb-desktop-nav" style={{ display: "flex", alignItems: "center", gap: "clamp(0.8rem, 2vw, 2rem)" }}>
+              <span className="nb-divider" style={{ height: 16 }} />
+              {user ? (
+                <>
+                  <span style={{ fontSize: "0.68rem", color: "#8A6060", letterSpacing: "0.03em" }}>
+                    Hi, {user.name.split(" ")[0]}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.68rem", fontWeight: 600, color: "#8A6060", letterSpacing: "0.05em", padding: 0 }}
                   >
-                    Admin
-                  </Link>
-                )}
-
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: "0.68rem",
-                    fontWeight: 600,
-                    color: "#8A6060",
-                    letterSpacing: "0.05em",
-                    padding: 0,
-                    transition: "color 0.18s ease",
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#7B1728")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#8A6060")}
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="nb-link"
-                  style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 500,
-                    color: "#5C3A3A",
-                    letterSpacing: "0.05em",
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#7B1728")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#5C3A3A")}
-                >
-                  Login
-                </Link>
-                <span className="nb-divider" />
-                <Link
-                  href="/register"
-                  className="nb-link"
-                  style={{
-                    fontSize: "0.68rem",
-                    fontWeight: 500,
-                    color: "#5C3A3A",
-                    letterSpacing: "0.05em",
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#7B1728")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#5C3A3A")}
-                >
-                  Register
-                </Link>
-              </>
-            )}
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="nb-link" style={{ fontSize: "0.68rem", fontWeight: 500, color: "#5C3A3A", letterSpacing: "0.05em" }}>Login</Link>
+                  <span className="nb-divider" />
+                  <Link href="/register" className="nb-link" style={{ fontSize: "0.68rem", fontWeight: 500, color: "#5C3A3A", letterSpacing: "0.05em" }}>Register</Link>
+                </>
+              )}
+            </div>
 
             {/* Cart pill */}
             <Link href="/cart" className="nb-cart">
               <span style={{ fontWeight: 400, opacity: 0.8 }}>+</span>
-              Cart ({count})
+              <span className="hidden sm:inline">Cart</span> ({count})
             </Link>
 
             {/* Dark mode toggle */}
@@ -686,12 +644,10 @@ export default function Navbar() {
                 localStorage.setItem("zyvora-theme", next ? "dark" : "light");
               }}
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              title={isDark ? "Light mode" : "Dark mode"}
             >
               {isDark ? (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
                   <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
                   <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
                   <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
@@ -703,16 +659,46 @@ export default function Navbar() {
               )}
             </button>
 
+            {/* Mobile Menu Toggle */}
             <button
-              onClick={() => router.push("/search")}
-              className="nb-link"
-              style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}
+              className="nb-mobile-toggle"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle Menu"
             >
-              Search
+              {menuOpen ? (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              ) : (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+              )}
             </button>
             
           </div>
 
+        </div>
+
+        {/* ── MOBILE DRAWER ────────────────────── */}
+        <div className={`nb-mobile-overlay ${menuOpen ? "open" : ""}`} onClick={() => setMenuOpen(false)} />
+        <div className={`nb-mobile-drawer ${menuOpen ? "open" : ""}`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {navItems.map(({ href, label }) => (
+              <a key={label} href={href} onClick={() => setMenuOpen(false)} style={{ fontSize: "0.9rem", fontWeight: 600, color: "#5C3A3A", textTransform: "uppercase" }}>{label}</a>
+            ))}
+            <Link href="/reels" onClick={() => setMenuOpen(false)} style={{ fontSize: "0.9rem", fontWeight: 700, color: "#7B1728", textTransform: "uppercase" }}>Reels</Link>
+          </div>
+          <div className="nb-divider" style={{ width: "100%", height: 1 }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {user ? (
+              <>
+                <span style={{ fontSize: "0.85rem", color: "#8A6060" }}>Hi, {user.name}</span>
+                <button onClick={handleLogout} style={{ textAlign: "left", fontSize: "0.85rem", fontWeight: 600, color: "#7B1728" }}>Logout</button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" onClick={() => setMenuOpen(false)} style={{ fontSize: "0.85rem", fontWeight: 600 }}>Login</Link>
+                <Link href="/register" onClick={() => setMenuOpen(false)} style={{ fontSize: "0.85rem", fontWeight: 600 }}>Register</Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
     </>

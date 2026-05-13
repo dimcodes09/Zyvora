@@ -222,6 +222,34 @@ const HERO_STYLES = `
   html.dark .carousel-dot.active   { background: #c84a5a !important; width: 22px; }
   html.dark .carousel-progress-track { background: rgba(200, 74, 90, 0.12) !important; }
   html.dark .carousel-progress-fill  { background: #c84a5a !important; }
+
+  /* ── Responsive Hero ── */
+  @media (max-width: 1024px) {
+    .h-content-grid {
+      grid-template-columns: 1fr !important;
+      gap: 3rem !important;
+      text-align: center;
+      padding-top: 2rem !important;
+      padding-bottom: 4rem !important;
+    }
+    .h-tagline { justify-content: center; }
+    .h-sub { margin-left: auto; margin-right: auto; }
+    .h-cta { justify-content: center; }
+    .h-stats { justify-content: center; flex-wrap: wrap; gap: 1.5rem !important; }
+    .h-brand-strip { 
+      flex-wrap: wrap !important; 
+      height: auto !important; 
+      padding: 1.5rem 1rem !important; 
+      gap: 1.5rem !important; 
+    }
+    .h-brand-strip span { font-size: 0.55rem !important; }
+  }
+  @media (max-width: 640px) {
+    #hero { padding-top: 60px !important; }
+    .h-your { fontSize: clamp(2.5rem, 12vw, 4rem) !important; }
+    .h-choice { fontSize: clamp(3.5rem, 18vw, 6rem) !important; }
+    .carousel-arrow { display: none !important; }
+  }
 `;
 
 /* ─── Petal accent ────────────────────────────── */
@@ -583,11 +611,12 @@ export default function Hero() {
 
         {/* ── Main content grid ─────────────────── */}
         <div
+          className="h-content-grid"
           style={{
             position: "relative", zIndex: 10,
             width: "100%", maxWidth: 1320,
             margin: "0 auto",
-            padding: "0 2.5rem",
+            padding: "0 clamp(1rem, 5vw, 2.5rem)",
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "4rem",
@@ -715,16 +744,19 @@ export default function Hero() {
 
         {/* ── Bottom brand strip ─────────────────── */}
         <div
+          className="h-brand-strip"
           style={{
-            position: "absolute",
+            position: "relative",
             bottom: 0, left: 0, right: 0,
-            height: 48,
+            minHeight: 48,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "4rem",
+            gap: "clamp(1rem, 4vw, 4rem)",
             borderTop: "1px solid rgba(123,23,40,0.08)",
             zIndex: 20,
+            background: "rgba(253, 243, 240, 0.5)",
+            backdropFilter: "blur(4px)",
           }}
         >
           {["Free Delivery Above ₹1,499", "Premium Packaging", "30-Day Returns", "Gift Wrapping Available"].map((t) => (
