@@ -13,10 +13,10 @@ const stats = [
 
 /* ─── Carousel products ───────────────────────── */
 const products = [
-  { id: "1", image: "/images/p1.png", name: "Rosé Bloom Bouquet",      price: "₹3,200", tag: "Bestseller"  },
-  { id: "2", image: "/images/p2.png", name: "Amber Glow Hamper",       price: "₹5,800", tag: "New Arrival" },
-  { id: "3", image: "/images/p3.png", name: "Pearl Luxe Gift Box",     price: "₹8,400", tag: "Luxury Pick" },
-  { id: "4", image: "/images/p4.png", name: "Velvet Dream Keepsake",   price: "₹4,600", tag: "Curated"     },
+  { id: "1", image: "https://res.cloudinary.com/djsd3uxbz/image/upload/v1778688590/p1_xirhod.png", name: "Rosé Bloom Bouquet",      price: "₹3,200", tag: "Bestseller"  },
+  { id: "2", image: "https://res.cloudinary.com/djsd3uxbz/image/upload/v1778688662/p2_jpmzg5.png", name: "Amber Glow Hamper",       price: "₹5,800", tag: "New Arrival" },
+  { id: "3", image: "https://res.cloudinary.com/djsd3uxbz/image/upload/v1778688689/p3_au7nz0.png", name: "Pearl Luxe Gift Box",     price: "₹8,400", tag: "Luxury Pick" },
+  { id: "4", image: "https://res.cloudinary.com/djsd3uxbz/image/upload/v1778688727/p4_fwxpbw.png", name: "Velvet Dream Keepsake",   price: "₹4,600", tag: "Curated"     },
 ];
 
 /* ─── Inline styles / keyframes ──────────────── */
