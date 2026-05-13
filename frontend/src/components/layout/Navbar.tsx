@@ -7,6 +7,37 @@ import { useCartStore } from "@/store/cart.store";
 import { useAuthStore } from "@/store/auth.store";
 import CustomerSupportModal from "@/components/CustomerSupportModal";
 
+// ── Web Speech API types (not in lib.dom.d.ts by default) ────────────────────
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+interface SpeechRecognitionResult {
+  readonly [index: number]: SpeechRecognitionAlternative;
+  readonly length: number;
+}
+interface SpeechRecognitionResultList {
+  readonly [index: number]: SpeechRecognitionResult;
+  readonly length: number;
+}
+interface SpeechRecognitionEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionInstance extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart:  (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror:  ((event: Event) => void) | null;
+  onend:    (() => void) | null;
+  start(): void;
+}
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 /* ─── Nav items ───────────────────────────────── */
 const navItems = [
   { href: "#new-arrivals", label: "New Arrivals" },
@@ -469,14 +500,23 @@ export default function Navbar() {
 
   /* ── Navbar voice search ──────────────────────── */
   const startNavListening = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) { alert("Voice search requires Chrome or Edge."); return; }
-    const recognition = new SR();
+    const SRConstructor: SpeechRecognitionConstructor | undefined =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition;
+
+    if (!SRConstructor) {
+      alert("Voice search requires Chrome or Edge.");
+      return;
+    }
+
+    const recognition: SpeechRecognitionInstance = new SRConstructor();
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+
     recognition.onstart = () => setIsNavListening(true);
-    recognition.onresult = (event: any) => {
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const text: string = event.results[0][0].transcript;
       setSearchQuery(text);
       setShowSugg(false);
@@ -486,6 +526,7 @@ export default function Navbar() {
       if (el) el.scrollIntoView({ behavior: "smooth" });
       setSearchLoading(false);
     };
+
     recognition.onerror = () => setIsNavListening(false);
     recognition.onend   = () => setIsNavListening(false);
     recognition.start();
