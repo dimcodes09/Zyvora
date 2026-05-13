@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface IGiftMessage extends Document {
   senderId?: string;
-  type: "text" | "audio";
+  type: "text" | "audio" | "video";
   content: string;
   createdAt: Date;
 }
@@ -10,7 +10,7 @@ export interface IGiftMessage extends Document {
 const GiftMessageSchema = new Schema<IGiftMessage>(
   {
     senderId: { type: String },
-    type: { type: String, enum: ["text", "audio"], required: true },
+    type: { type: String, enum: ["text", "audio", "video"], required: true },
     content: { type: String, required: true },
   },
   { timestamps: true }

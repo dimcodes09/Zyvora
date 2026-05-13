@@ -1,15 +1,11 @@
-// hooks/useHamper.ts
-// ─── All hamper state + debounced backend sync in one hook ────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchHamper, saveHamper } from "@/lib/hamperApi";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 export interface Product {
-  _id:      string;
-  name:     string;
-  price:    number;
-  image:    string;
+  _id: string;
+  name: string;
+  price: number;
+  image: string;
   category: string;
 }
 
@@ -19,21 +15,16 @@ export interface HamperItem extends Product {
 
 type SyncStatus = "idle" | "saving" | "saved" | "error";
 
-// ── Debounce delay (ms) ───────────────────────────────────────────────────────
 const DEBOUNCE_MS = 800;
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function useHamper() {
-  const [items,      setItems]      = useState<HamperItem[]>([]);
+  const [items, setItems] = useState<HamperItem[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
 
-  // Track whether the initial load has completed so we don't
-  // fire a save() call for the load itself.
   const initialised = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Load hamper on mount ──────────────────────────────────────────────────
+  // ── Load hamper ─────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
@@ -42,33 +33,26 @@ export function useHamper() {
         const result = await fetchHamper();
 
         if (cancelled) return;
-
-        // null means guest / not authenticated — start with empty hamper silently
         if (!result) return;
 
-        // The API returns { productId: { _id, name, … }, quantity }
-        // Map that back to the flat HamperItem shape used in the UI.
         const mapped: HamperItem[] = (result.data.items || []).map((entry: any) => {
-          const p = entry.productId; // populated product object
+          const p = entry.productId;
           return {
-            _id:      p._id,
-            name:     p.name,
-            price:    p.price,
-            image:    p.image,
+            _id: p._id,
+            name: p.name,
+            price: p.price,
+            image: p.image,
             category: p.category,
-            qty:      entry.quantity,
+            qty: entry.quantity,
           };
         });
 
-        // Mark as initialised BEFORE setItems so the sync effect
-        // (which runs after every setItems call) correctly skips this load.
         initialised.current = true;
         setItems(mapped);
       } catch (err) {
-        // Only real network / server errors reach here now
         console.warn("[useHamper] Could not load hamper:", err);
       } finally {
-        if (!cancelled) initialised.current = true; // ensure set even on error
+        if (!cancelled) initialised.current = true;
       }
     };
 
@@ -76,10 +60,15 @@ export function useHamper() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Debounced sync to backend whenever items change ───────────────────────
+  // ── Debounced sync ──────────────────────────────────────────
   useEffect(() => {
-    // Skip the sync triggered by the initial load
     if (!initialised.current) return;
+
+    // 🔥 NEW: prevent unnecessary API calls
+    if (!items || items.length === 0) {
+      setSyncStatus("idle");
+      return;
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -87,11 +76,17 @@ export function useHamper() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        await saveHamper(
+        // 🔥 NEW: safe call (handles null internally)
+        const res = await saveHamper(
           items.map((i) => ({ productId: i._id, quantity: i.qty }))
         );
+
+        if (!res) {
+          setSyncStatus("idle"); // guest / network fail
+          return;
+        }
+
         setSyncStatus("saved");
-        // Reset to idle after a short moment so UI can show "Saved ✓"
         setTimeout(() => setSyncStatus("idle"), 1500);
       } catch (err) {
         console.error("[useHamper] Save failed:", err);
@@ -104,8 +99,7 @@ export function useHamper() {
     };
   }, [items]);
 
-  // ── Actions ───────────────────────────────────────────────────────────────
-
+  // ── Actions ─────────────────────────────────────────────────
   const addItem = useCallback((product: Product) => {
     setItems((prev) => {
       const existing = prev.find((i) => i._id === product._id);
@@ -132,12 +126,11 @@ export function useHamper() {
 
   const clearHamper = useCallback(() => setItems([]), []);
 
-  // ── Derived values ────────────────────────────────────────────────────────
-
+  // ── Derived ─────────────────────────────────────────────────
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
-  const subtotal  = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const packaging = itemCount > 0 ? 199 : 0;
-  const total     = subtotal + packaging;
+  const total = subtotal + packaging;
 
   return {
     items,

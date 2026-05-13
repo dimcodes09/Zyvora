@@ -25,8 +25,8 @@ interface DragOrigin {
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// Set your machine's local IP here (or via .env.local → NEXT_PUBLIC_LOCAL_IP)
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+// AR can use HTTPS/ngrok while gift QR can use a same-network LAN URL.
+const baseUrl = process.env.NEXT_PUBLIC_AR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function buildArUrl(productId: string) {

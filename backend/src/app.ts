@@ -27,16 +27,38 @@ import giftRoutes from "./routes/giftRoutes.js";
 
 const app: Application = express();
 
+const allowedOrigins = new Set(
+  [
+    config.clientUrl,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://zyvora-livid.vercel.app",
+    "https://www.zyvora-livid.vercel.app",
+    process.env.PUBLIC_CLIENT_URL,
+    process.env.NGROK_URL,
+  ].filter((origin): origin is string => Boolean(origin))
+);
+
+const isLocalDevOrigin = (origin: string) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin) ||
+  /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+  /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+  /^https?:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
+  /^https:\/\/[a-z0-9-]+\.ngrok-free\.dev$/.test(origin);
+
 // ─── Security Middleware ───────────────────────────────────────
 app.use(helmet());
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://zyvora-livid.vercel.app", // ✅ no trailing slash
-      "https://www.zyvora-livid.vercel.app", // optional www variant
-    ],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin) || isLocalDevOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],

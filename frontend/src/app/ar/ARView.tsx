@@ -133,6 +133,7 @@ const stopCamera = useCallback(() => {
     <div
       style={{
         position: "fixed", inset: 0,
+        zIndex: 9999,
         background: "#1a0d0f",
         overflow: "hidden",
         touchAction: "none",

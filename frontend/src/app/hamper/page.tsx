@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useHamperContext } from "@/context/HamperContext";
 import FloatingHamperButton from "@/components/FloatingHamperButton";
 import HamperDrawer from "@/components/HamperDrawer";
+import GiftMessageBox from "@/components/GiftMessageBox"; // ← ADDED LINE 1
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ export default function HamperPage() {
       .catch(() => { setError(true); setLoading(false); });
   }, []);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => { fetchProducts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Add to hamper ─────────────────────────────────────────────────────────
 
@@ -403,6 +404,13 @@ export default function HamperPage() {
               </div>
             )}
 
+            {/* ── ADDED LINE 2: Gift Message Box ── */}
+            {items.length > 0 && !hamperLoading && (
+              <GiftMessageBox onGiftSaved={(giftId) => {
+                (window as Window & Record<string, unknown>).__hamperGiftId = giftId;
+              }} />
+            )}
+
             {/* Summary */}
             {items.length > 0 && !hamperLoading && (
               <div style={styles.summaryBox}>
@@ -427,7 +435,10 @@ export default function HamperPage() {
                   className="zy-co"
                   style={{ ...styles.checkoutBtn, ...(syncStatus === "saving" ? { opacity: 0.6, cursor: "not-allowed" } : {}) }}
                   disabled={syncStatus === "saving"}
-                  onClick={() => { window.location.href = "/checkout?type=hamper"; }}
+                  onClick={() => {
+                    const gid = (window as Window & Record<string, unknown>).__hamperGiftId as string | undefined;
+                    window.location.href = `/checkout?type=hamper${gid ? `&giftId=${gid}` : ""}`;
+                  }}
                 >
                   {syncStatus === "saving" ? "Saving…" : "Proceed to Checkout →"}
                 </button>
