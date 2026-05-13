@@ -2,10 +2,35 @@
 
 import { useEffect, useRef } from "react";
 
+/* ── Dark mode helpers (used by Navbar toggle) ── */
+export function applyDarkMode(dark: boolean) {
+  const root = document.documentElement;
+  if (dark) {
+    root.classList.add("dark");
+    localStorage.setItem("zyvora-theme", "dark");
+  } else {
+    root.classList.remove("dark");
+    localStorage.setItem("zyvora-theme", "light");
+  }
+}
+
+export function toggleDarkMode() {
+  const isDark = document.documentElement.classList.contains("dark");
+  applyDarkMode(!isDark);
+}
+
 export default function ClientEffects() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    /* Restore dark mode preference on mount */
+    try {
+      const stored = localStorage.getItem("zyvora-theme");
+      applyDarkMode(stored === "dark");
+    } catch {}
+    /* Expose toggle globally for Navbar button */
+    (window as Window & { toggleDarkMode?: () => void }).toggleDarkMode = toggleDarkMode;
+
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
 

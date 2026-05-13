@@ -29,6 +29,21 @@
   --text-light: #B89BA0;
 }
 
+/* ✅ DARK MODE OVERRIDES */
+.dark {
+  --rose:        #c84a5a;
+  --rose-light:  #e87a8a;
+  --rose-pale:   #2a1418;
+  --rose-blush:  #1a1416;
+  --rose-deep:   #c84a5a;
+  --cream:       #0f0b0c;
+  --warm-white:  #1a1416;
+  --gold:        #d4a96a;
+  --text-dark:   #f5eaea;
+  --text-mid:    #c4a5a5;
+  --text-light:  #7a5c5c;
+}
+
 /* ✅ GLOBAL BASE */
 html {
   scroll-behavior: smooth;
@@ -59,6 +74,8 @@ body {
   background: var(--rose-light);
   border-radius: 3px;
 }
+.dark ::-webkit-scrollbar-track { background: #0f0b0c; }
+.dark ::-webkit-scrollbar-thumb { background: #2a2224; }
 
 /* ========================= */
 /* 🔥 ANIMATIONS */
@@ -200,3 +217,190 @@ body {
 .reveal-delay-2 { transition-delay: 0.2s; }
 .reveal-delay-3 { transition-delay: 0.3s; }
 .reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ================================================ */
+/* 🌙 GLOBAL DARK MODE OVERRIDES                    */
+/* Covers all pages — avoids editing each component */
+/* ================================================ */
+
+/* ── Page backgrounds ──────────────────────────── */
+.dark .bg-white           { background-color: #1a1416 !important; }
+.dark .bg-gray-50         { background-color: #150f11 !important; }
+.dark .bg-gray-100        { background-color: #1e1618 !important; }
+.dark .bg-gray-200        { background-color: #2a2224 !important; }
+
+/* ── Card / panel surfaces ─────────────────────── */
+/* Testimonials, AIGiftFinder, auth panel cards     */
+.dark .rounded-\[20px\].bg-white,
+.dark .rounded-2xl.bg-white,
+.dark .rounded-3xl.bg-white,
+.dark .rounded-xl.bg-white  { background-color: #1a1416 !important; }
+
+/* ── Text ──────────────────────────────────────── */
+.dark .text-gray-400      { color: #7a5c5c !important; }
+.dark .text-gray-500      { color: #9a7878 !important; }
+.dark .text-gray-600      { color: #c4a5a5 !important; }
+.dark .text-gray-700      { color: #d4b5b5 !important; }
+.dark .text-gray-900      { color: #f5eaea !important; }
+.dark .text-black         { color: #f5eaea !important; }
+
+/* ── Borders ───────────────────────────────────── */
+.dark .border-rose-100    { border-color: #2a2224 !important; }
+.dark .border-rose-200    { border-color: #3a2830 !important; }
+.dark .border-gray-200    { border-color: #2a2224 !important; }
+.dark .border-gray-300    { border-color: #3a2830 !important; }
+
+/* ── Form inputs & textareas ───────────────────── */
+.dark input.bg-white,
+.dark textarea.bg-white,
+.dark select.bg-white {
+  background-color: #1a1416 !important;
+  color: #f5eaea !important;
+  border-color: #2a2224 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #5a3c3c !important; }
+
+/* focus rings */
+.dark .focus\:ring-rose-100:focus { --tw-ring-color: rgba(42,34,36,0.5) !important; }
+
+/* ── Hover states ──────────────────────────────── */
+.dark .hover\:bg-gray-50:hover  { background-color: #221a1c !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #2a2224 !important; }
+.dark .hover\:bg-white:hover    { background-color: #2a2224 !important; }
+
+/* ── Tables (admin) ────────────────────────────── */
+.dark thead                { background-color: #1e1618 !important; color: #c4a5a5 !important; }
+.dark tbody tr             { border-color: #2a2224 !important; }
+.dark tbody tr:hover       { background-color: #221a1c !important; }
+.dark td, .dark th         { border-color: #2a2224 !important; color: #d4b5b5 !important; }
+
+/* ── Skeleton loaders ──────────────────────────── */
+.dark .bg-gray-200.rounded,
+.dark .bg-gray-100.rounded { background-color: #2a2224 !important; }
+
+/* ── Sticky headers ────────────────────────────── */
+.dark .sticky.bg-white     { background-color: #0f0b0c !important; }
+
+/* ── Sidebar / filter panels ───────────────────── */
+.dark aside.bg-white       { background-color: #1a1416 !important; }
+
+/* ── Dropdown menus ────────────────────────────── */
+.dark .absolute.bg-white   {
+  background-color: #1a1416 !important;
+  border-color: #2a2224 !important;
+}
+.dark .z-30.bg-white,
+.dark .z-40.bg-white       {
+  background-color: #1a1416 !important;
+  border-color: #2a2224 !important;
+}
+
+/* ── Auth panel inputs ─────────────────────────── */
+.dark .border-rose-100.bg-white { background-color: #1a1416 !important; }
+
+/* ── Admin black buttons → keep but adjust ──────── */
+.dark .bg-black            { background-color: #8b1e2d !important; }
+.dark .hover\:bg-gray-800:hover { background-color: #c84a5a !important; }
+
+/* ── Shadows lighten in dark ───────────────────── */
+.dark [class*="shadow-rose"] {
+  --tw-shadow-color: rgba(200, 74, 90, 0.12) !important;
+}
+
+/* ── Toggle knob (products filter) ─────────────── */
+.dark .bg-white.rounded-full { background-color: #f5eaea !important; }
+
+/* ── Arbitrary hex backgrounds ─────────────────── */
+/* bg-[#FDF8F5], bg-[#FAF7F5] — warm white pages   */
+.dark .bg-\[\#FDF8F5\]  { background-color: #0f0b0c !important; }
+.dark .bg-\[\#FAF7F5\]  { background-color: #0f0b0c !important; }
+.dark .bg-\[\#FAF0F1\]  { background-color: #1a1416 !important; }
+.dark .bg-\[\#F5DDE0\]  { background-color: #1e1618 !important; }
+.dark .bg-\[\#FDF8F5\]  { background-color: #0f0b0c !important; }
+.dark .bg-\[\#FFFBF9\]  { background-color: #0f0b0c !important; }
+.dark .bg-\[\#F0EAE6\]  { background-color: #1a1416 !important; }
+
+/* ── rose-50 used for hover/active cells ───────── */
+.dark .bg-rose-50                     { background-color: #1e1418 !important; }
+.dark .hover\:bg-rose-50:hover        { background-color: #1e1418 !important; }
+.dark .hover\:bg-\[#FDF8F5\]:hover    { background-color: #221a1c !important; }
+
+/* ── Arbitrary hex text colors ─────────────────── */
+.dark .text-\[\#3D2A2D\]  { color: #f5eaea !important; }
+.dark .text-\[\#3b2c2c\]  { color: #f5eaea !important; }
+.dark .text-\[\#2C1810\]  { color: #f5eaea !important; }
+.dark .text-\[\#3a2020\]  { color: #f5eaea !important; }
+.dark .text-\[\#7A5C60\]  { color: #c4a5a5 !important; }
+.dark .text-\[\#7a5c60\]  { color: #c4a5a5 !important; }
+.dark .text-\[\#8A6060\]  { color: #9a7878 !important; }
+.dark .text-\[\#A07878\]  { color: #7a5c5c !important; }
+.dark .text-\[\#B89BA0\]  { color: #7a5c5c !important; }
+.dark .text-\[\#9B5C63\]  { color: #c84a5a !important; }
+.dark .text-\[\#5C3A3A\]  { color: #c4a5a5 !important; }
+
+/* ── Arbitrary hex borders ─────────────────────── */
+.dark .border-\[\#eadede\]  { border-color: #2a2224 !important; }
+.dark .border-rose-50       { border-color: #2a2224 !important; }
+
+/* ── Products page inner card ──────────────────── */
+.dark .group.bg-white.border.border-rose-100.rounded-2xl {
+  background-color: #1a1416 !important;
+  border-color: #2a2224 !important;
+}
+
+/* ================================================ */
+/* 🛒 CART PAGE — custom CSS class dark overrides   */
+/* Cart uses injected <style> with custom classes   */
+/* We override them here under .dark               */
+/* ================================================ */
+.dark .cart-root,
+.dark .cart-empty     { background: #0f0b0c !important; }
+
+.dark .cart-title,
+.dark .cart-name,
+.dark .cart-qty-val,
+.dark .cart-line-price,
+.dark .cart-summary-val,
+.dark .cart-total-label,
+.dark .cart-card-title,
+.dark .cart-empty-title { color: #f5eaea !important; }
+
+.dark .cart-eyebrow,
+.dark .cart-count,
+.dark .cart-unit-price,
+.dark .cart-summary-label,
+.dark .cart-continue,
+.dark .cart-empty-sub  { color: #9a7878 !important; }
+
+.dark .cart-card {
+  background: #1a1416 !important;
+  border-color: #2a2224 !important;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4) !important;
+}
+
+.dark .cart-qty {
+  background: #1a1416 !important;
+  border-color: #2a2224 !important;
+}
+.dark .cart-qty-btn       { color: #c84a5a !important; }
+.dark .cart-qty-btn:hover { background: rgba(200,74,90,0.1) !important; }
+
+.dark .cart-item {
+  border-color: rgba(42,34,36,0.6) !important;
+}
+.dark .cart-img-wrap {
+  background: #1e1618 !important;
+  border-color: #2a2224 !important;
+}
+
+.dark .cart-remove        { color: #5a3c3c !important; }
+.dark .cart-remove:hover  { color: #c84a5a !important; background: rgba(200,74,90,0.1) !important; }
+
+.dark .cart-clear         { color: #5a3c3c !important; }
+.dark .cart-clear:hover   { color: #c84a5a !important; }
+
+.dark .cart-card-title,
+.dark .cart-total-row     { border-color: #2a2224 !important; }
+
+.dark .cart-total-val     { color: #c84a5a !important; }

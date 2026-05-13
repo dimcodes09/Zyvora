@@ -12,23 +12,40 @@ export interface ReelProduct {
 }
 
 export default function ReelsFeed() {
-  const [reels, setReels]       = useState<ReelProduct[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [empty, setEmpty]       = useState(false);
+  const [reels, setReels]     = useState<ReelProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     fetch("/api/reels")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        // Accept both 200 and soft-fail responses that still return JSON
+        const data = await r.json().catch(() => ({}));
+
+        if (cancelled) return;
+
+        if (!r.ok) {
+          console.warn("[ReelsFeed] API responded with", r.status, data);
+          setError(data?.error ?? "Could not load reels");
+          return;
+        }
+
         const list: ReelProduct[] = data?.products ?? [];
         setReels(list);
-        setEmpty(list.length === 0);
+        if (list.length === 0) setError("empty");
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error("[ReelsFeed] fetch failed:", err);
-        setEmpty(true);
+        setError("Network error — please try again");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   /* ── Loading skeleton ──────────────────────────── */
@@ -50,8 +67,9 @@ export default function ReelsFeed() {
     );
   }
 
-  /* ── Empty state ───────────────────────────────── */
-  if (empty) {
+  /* ── Error / empty state ───────────────────────── */
+  if (error) {
+    const isEmpty = error === "empty";
     return (
       <div style={centerStyle}>
         <p style={{
@@ -61,7 +79,7 @@ export default function ReelsFeed() {
           letterSpacing: "0.15em",
           textTransform: "uppercase",
         }}>
-          No reels yet
+          {isEmpty ? "No reels yet" : "Reels unavailable"}
         </p>
         <p style={{
           color: "rgba(253,245,240,0.35)",
@@ -69,8 +87,12 @@ export default function ReelsFeed() {
           fontSize: "0.72rem",
           marginTop: "0.5rem",
           letterSpacing: "0.08em",
+          textAlign: "center",
+          maxWidth: "22ch",
         }}>
-          Add a Reel Video URL to a product in the admin panel
+          {isEmpty
+            ? "Add a Reel Video URL to a product in the admin panel"
+            : error}
         </p>
       </div>
     );
@@ -82,7 +104,8 @@ export default function ReelsFeed() {
         <ReelCard key={product._id} product={product} />
       ))}
 
-      <style jsx>{`
+      {/* Note: `jsx` is not a valid prop on <style> in TSX — use plain <style> */}
+      <style>{`
         .reels-feed {
           height: 100dvh;
           overflow-y: scroll;

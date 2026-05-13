@@ -297,6 +297,14 @@ const STYLES = `
       margin: 0 auto;
     }
   }
+
+  /* ── Dark mode ───────────────────────────── */
+  html.dark .cat-section {
+    background: linear-gradient(160deg, #0f0b0c 0%, #130c0e 40%, #140b15 80%, #100c19 100%) !important;
+  }
+  html.dark .cat-heading  { color: #f5eaea !important; }
+  html.dark .cat-label    { color: #c84a5a !important; }
+  html.dark .cat-card     { background: #1a1416 !important; }
 `;
 
 /* ─── Component ─────────────────────────────────────────── */

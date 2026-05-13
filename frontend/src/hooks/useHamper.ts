@@ -18,41 +18,50 @@ type SyncStatus = "idle" | "saving" | "saved" | "error";
 const DEBOUNCE_MS = 800;
 
 export function useHamper() {
-  const [items, setItems] = useState<HamperItem[]>([]);
+  const [items, setItems]         = useState<HamperItem[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
 
-  const initialised = useRef(false);
+  // Track whether the initial load has completed
+  // Use state (not just ref) so the sync effect re-runs after load finishes
+  const [loaded, setLoaded]       = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Load hamper ─────────────────────────────────────────────
+  // ── Load hamper on mount ─────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       try {
         const result = await fetchHamper();
-
         if (cancelled) return;
-        if (!result) return;
+        if (!result) {
+          // Guest user — nothing to load, mark as loaded anyway
+          setLoaded(true);
+          return;
+        }
 
-        const mapped: HamperItem[] = (result.data.items || []).map((entry: any) => {
-          const p = entry.productId;
-          return {
-            _id: p._id,
-            name: p.name,
-            price: p.price,
-            image: p.image,
-            category: p.category,
-            qty: entry.quantity,
-          };
-        });
+        const mapped: HamperItem[] = (result.data.items || [])
+          // Skip items where productId wasn't populated (deleted products)
+          .filter((entry: any) => entry.productId && typeof entry.productId === "object")
+          .map((entry: any) => {
+            const p = entry.productId;
+            return {
+              _id:      p._id,
+              name:     p.name,
+              price:    p.price,
+              image:    p.image,
+              category: p.category,
+              qty:      entry.quantity,
+            };
+          });
 
-        initialised.current = true;
-        setItems(mapped);
+        if (!cancelled) {
+          setItems(mapped);
+          setLoaded(true);
+        }
       } catch (err) {
         console.warn("[useHamper] Could not load hamper:", err);
-      } finally {
-        if (!cancelled) initialised.current = true;
+        if (!cancelled) setLoaded(true); // still mark loaded so saves work
       }
     };
 
@@ -60,15 +69,10 @@ export function useHamper() {
     return () => { cancelled = true; };
   }, []);
 
-  // ── Debounced sync ──────────────────────────────────────────
+  // ── Debounced sync — runs whenever items changes AFTER initial load ──
   useEffect(() => {
-    if (!initialised.current) return;
-
-    // 🔥 NEW: prevent unnecessary API calls
-    if (!items || items.length === 0) {
-      setSyncStatus("idle");
-      return;
-    }
+    // Don't sync until the initial fetch has completed
+    if (!loaded) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -76,13 +80,12 @@ export function useHamper() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        // 🔥 NEW: safe call (handles null internally)
-        const res = await saveHamper(
-          items.map((i) => ({ productId: i._id, quantity: i.qty }))
-        );
+        const payload = items.map((i) => ({ productId: i._id, quantity: i.qty }));
+        const res = await saveHamper(payload);
 
         if (!res) {
-          setSyncStatus("idle"); // guest / network fail
+          // Guest — token absent, nothing to save
+          setSyncStatus("idle");
           return;
         }
 
@@ -97,7 +100,8 @@ export function useHamper() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [items]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, loaded]);
 
   // ── Actions ─────────────────────────────────────────────────
   const addItem = useCallback((product: Product) => {
@@ -128,9 +132,9 @@ export function useHamper() {
 
   // ── Derived ─────────────────────────────────────────────────
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal  = items.reduce((s, i) => s + i.price * i.qty, 0);
   const packaging = itemCount > 0 ? 199 : 0;
-  const total = subtotal + packaging;
+  const total     = subtotal + packaging;
 
   return {
     items,

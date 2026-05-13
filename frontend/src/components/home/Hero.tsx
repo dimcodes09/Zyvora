@@ -193,6 +193,35 @@ const HERO_STYLES = `
   }
 
   .h-parallax { will-change: transform; }
+
+  /* ── Dark mode ───────────────────────────── */
+  html.dark #hero {
+    background: linear-gradient(155deg, #0f0b0c 0%, #13080a 35%, #160b0d 70%, #1a0f11 100%) !important;
+  }
+  html.dark .h-badge {
+    background: rgba(20, 14, 16, 0.97) !important;
+    border-color: rgba(200, 74, 90, 0.18) !important;
+  }
+  html.dark .h-btn-ghost {
+    color: #c84a5a !important;
+    border-color: rgba(200, 74, 90, 0.38) !important;
+  }
+  html.dark .h-btn-ghost:hover {
+    background: rgba(200, 74, 90, 0.08) !important;
+  }
+  html.dark .carousel-arrow {
+    background: rgba(20, 14, 16, 0.92) !important;
+    border-color: rgba(200, 74, 90, 0.28) !important;
+    color: #c84a5a !important;
+  }
+  html.dark .carousel-arrow:hover {
+    background: rgba(26, 20, 22, 1) !important;
+    border-color: #c84a5a !important;
+  }
+  html.dark .carousel-dot          { background: rgba(200, 74, 90, 0.22) !important; }
+  html.dark .carousel-dot.active   { background: #c84a5a !important; width: 22px; }
+  html.dark .carousel-progress-track { background: rgba(200, 74, 90, 0.12) !important; }
+  html.dark .carousel-progress-fill  { background: #c84a5a !important; }
 `;
 
 /* ─── Petal accent ────────────────────────────── */

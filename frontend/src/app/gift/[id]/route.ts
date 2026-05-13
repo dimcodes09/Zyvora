@@ -14,9 +14,10 @@ type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
 };
 
+// Server-side route — use BACKEND_URL (localhost) so we don't timeout on LAN IP
 const getGiftApiBase = () => {
   const configured =
-    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.BACKEND_URL ||
     process.env.API_URL ||
     "http://localhost:5000/api";
 
@@ -32,16 +33,22 @@ const escapeHtml = (value: string) =>
     .replace(/'/g, "&#39;");
 
 async function loadGift(id: string): Promise<GiftData | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+
   try {
     const res = await fetch(`${getGiftApiBase()}/gift/${id}`, {
       cache: "no-store",
+      signal: controller.signal,
     });
 
+    clearTimeout(timer);
     if (!res.ok) return null;
 
     const json = (await res.json()) as GiftResponse;
     return json.success && json.data ? json.data : null;
   } catch {
+    clearTimeout(timer);
     return null;
   }
 }

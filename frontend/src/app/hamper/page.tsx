@@ -230,7 +230,31 @@ export default function HamperPage() {
         ::-webkit-scrollbar-thumb { background: #e0b8b8; border-radius: 4px; }
       `}</style>
 
-      <div style={styles.page}>
+      <style>{`
+        html.dark #hamper-root   { background-color: #0f0b0c !important; }
+        html.dark #hamper-header {
+          background-color: #0f0b0c !important;
+          border-bottom-color: #2a2224 !important;
+        }
+        html.dark #hamper-right  { background-color: #0f0b0c !important; }
+        html.dark #hamper-divider { background-color: #2a2224 !important; }
+        html.dark .zy-card {
+          background-color: #1a1416 !important;
+          border-color: #2a2224 !important;
+        }
+        html.dark #hamper-summary {
+          background-color: #1a1416 !important;
+          border-color: #2a2224 !important;
+        }
+        html.dark #hamper-total-divider { background-color: #2a2224 !important; }
+        html.dark .hamper-row { border-bottom-color: #2a2224 !important; }
+        html.dark .zy-qty:hover  { background-color: #2a2224 !important; }
+        html.dark .zy-clr:hover  { border-color: #c84a5a !important; color: #c84a5a !important; }
+        html.dark .zy-retry:hover { background-color: #1a1416 !important; }
+        html.dark ::-webkit-scrollbar-thumb { background: #2a2224; }
+      `}</style>
+
+      <div id="hamper-root" style={styles.page}>
 
         {/* Banner */}
         <div style={styles.banner}>
@@ -238,7 +262,7 @@ export default function HamperPage() {
         </div>
 
         {/* Header */}
-        <div style={styles.header}>
+        <div id="hamper-header" style={styles.header}>
           <div style={styles.headerLabel}>
             <span style={styles.headerLabelLine} />
             ZYVORA &nbsp;·&nbsp; GIFTING STUDIO
@@ -332,10 +356,10 @@ export default function HamperPage() {
           </div>
 
           {/* Divider */}
-          <div style={styles.divider} />
+          <div id="hamper-divider" style={styles.divider} />
 
           {/* ──── RIGHT: hamper panel ──── */}
-          <div style={styles.rightPanel}>
+          <div id="hamper-right" style={styles.rightPanel}>
             <div style={styles.hamperLabel}>Your Selection</div>
             <h2 style={styles.hamperTitle}>
               Your <span style={styles.hamperTitleAccent}>Hamper</span>
@@ -413,7 +437,7 @@ export default function HamperPage() {
 
             {/* Summary */}
             {items.length > 0 && !hamperLoading && (
-              <div style={styles.summaryBox}>
+              <div id="hamper-summary" style={styles.summaryBox}>
                 <div style={styles.summaryRow}>
                   <span style={styles.summaryLabel}>Items</span>
                   <span style={styles.summaryValue}>{itemCount} selected</span>
@@ -426,7 +450,7 @@ export default function HamperPage() {
                   <span style={styles.summaryLabel}>Premium Packaging</span>
                   <span style={styles.summaryValue}>₹{packaging.toLocaleString("en-IN")}</span>
                 </div>
-                <div style={styles.totalDivider} />
+                <div id="hamper-total-divider" style={styles.totalDivider} />
                 <div style={styles.totalRow}>
                   <span style={styles.totalLabel}>Total</span>
                   <span style={styles.totalPrice}>₹{total.toLocaleString("en-IN")}</span>

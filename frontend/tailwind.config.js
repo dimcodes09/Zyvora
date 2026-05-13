@@ -1,11 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx}",
     "./src/components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
+      colors: {
+        brand: {
+          lightBg:     "#f6ebe9",
+          darkBg:      "#0f0b0c",
+          lightCard:   "#ffffff",
+          darkCard:    "#1a1416",
+          lightText:   "#3b2c2c",
+          darkText:    "#f5eaea",
+          primary:     "#8b1e2d",
+          primaryDark: "#c84a5a",
+          borderLight: "#eadede",
+          borderDark:  "#2a2224",
+        },
+      },
       animation: {
         marquee: "marquee 24s linear infinite",
         blob: "blob 8s ease-in-out infinite",

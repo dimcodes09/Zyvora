@@ -12,10 +12,10 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/products/${product._id}`}
-      className="group block rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-xl transition-all duration-500 border border-rose-100/60"
+      className="group block rounded-2xl overflow-hidden bg-brand-lightCard dark:bg-brand-darkCard shadow-sm hover:shadow-xl transition-all duration-500 border border-brand-borderLight dark:border-brand-borderDark"
     >
       {/* ✅ FIXED IMAGE CONTAINER */}
-      <div className="relative w-full h-52 bg-[#FAF0F1] overflow-hidden">
+      <div className="relative w-full h-52 bg-[#FAF0F1] dark:bg-brand-darkCard overflow-hidden">
         <Image
           src={imgSrc}
           alt={product.name || "Product"}
@@ -52,15 +52,15 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* ✅ TEXT SECTION */}
       <div className="px-3.5 py-3">
-        <p className="text-xs font-medium text-[#B89BA0] uppercase tracking-wider mb-1 truncate">
+        <p className="text-xs font-medium text-[#B89BA0] dark:text-brand-darkText/60 uppercase tracking-wider mb-1 truncate">
           {product.category || "Luxury Gift"}
         </p>
 
-        <h3 className="text-sm font-semibold text-[#3D2A2D] truncate leading-snug">
+        <h3 className="text-sm font-semibold text-[#3D2A2D] dark:text-brand-darkText truncate leading-snug">
           {product.name}
         </h3>
 
-        <p className="mt-1.5 text-sm font-bold text-[#C97B84]">
+        <p className="mt-1.5 text-sm font-bold text-[#C97B84] dark:text-brand-primaryDark">
           ₹{(product.price ?? 0).toLocaleString("en-IN")}
         </p>
       </div>

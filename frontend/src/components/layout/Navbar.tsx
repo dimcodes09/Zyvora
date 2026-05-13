@@ -212,6 +212,62 @@ const NAV_STYLES = `
 
   @keyframes nb-spin { to { transform: rotate(360deg); } }
   .nb-spin { animation: nb-spin 0.7s linear infinite; display: inline-block; }
+
+  /* ── Dark mode overrides ──────────────────────── */
+  .dark .nb-scrolled {
+    background: rgba(15, 11, 12, 0.97) !important;
+    box-shadow: 0 2px 18px rgba(0,0,0,0.35) !important;
+  }
+  .dark .nb-link        { color: #c4a5a5 !important; }
+  .dark .nb-link.active,
+  .dark .nb-link:hover  { color: #c84a5a !important; }
+  .dark .nb-link::after { background: #c84a5a; }
+  .dark .nb-reels        { color: #c4a5a5 !important; }
+  .dark .nb-reels.active,
+  .dark .nb-reels:hover  { color: #c84a5a !important; }
+  .dark .nb-reels::after { background: #c84a5a; }
+  .dark .nb-divider      { background: rgba(200,150,150,0.18); }
+  .dark .nb-search-wrap {
+    background: rgba(26, 20, 22, 0.9);
+    border-color: rgba(200, 74, 90, 0.28);
+  }
+  .dark .nb-search-wrap:focus-within {
+    border-color: #c84a5a;
+    box-shadow: 0 2px 16px rgba(200,74,90,0.15);
+    background: #1a1416;
+  }
+  .dark .nb-search-input             { color: #f5eaea; }
+  .dark .nb-search-input::placeholder { color: #5a3c3c; }
+  .dark .nb-search-btn               { background: #8b1e2d; }
+  .dark .nb-search-btn:hover:not(:disabled) { background: #c84a5a; }
+  .dark .nb-ai-label                 { color: #c84a5a; }
+  .dark .nb-suggestions {
+    background: #1a1416;
+    border-color: #2a2224;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+  }
+  .dark .nb-suggestion-item       { color: #f5eaea; }
+  .dark .nb-suggestion-item:hover { background: #2a2224; }
+
+  /* ── Dark toggle button ───────────────────────── */
+  .nb-dark-toggle {
+    display: flex; align-items: center; justify-content: center;
+    background: none;
+    border: 1px solid rgba(180,120,120,0.28);
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    cursor: pointer;
+    color: #8A6060;
+    transition: all 0.2s ease;
+    flex-shrink: 0; padding: 0;
+  }
+  .nb-dark-toggle:hover {
+    border-color: #8b1e2d; color: #8b1e2d;
+    background: rgba(139,30,45,0.07);
+    transform: scale(1.08);
+  }
+  .dark .nb-dark-toggle { border-color: rgba(200,74,90,0.35); color: #c84a5a; }
+  .dark .nb-dark-toggle:hover { border-color: #c84a5a; background: rgba(200,74,90,0.12); }
 `;
 
 export default function Navbar() {
@@ -220,6 +276,7 @@ export default function Navbar() {
 
   const [activeHash, setActiveHash] = useState("");
   const [scrolled,   setScrolled]   = useState(false);
+  const [isDark,     setIsDark]     = useState(false);
 
   /* ── AI Search state ──────────────────────────── */
   const [searchQuery,   setSearchQuery]   = useState("");
@@ -257,6 +314,16 @@ export default function Navbar() {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* ── Dark mode sync ────────────────────────────── */
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+    const obs = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    );
+    obs.observe(document.documentElement, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
   }, []);
 
   /* ── Suggestions debounce ─────────────────────── */
@@ -348,8 +415,8 @@ export default function Navbar() {
           top: 0, left: 0, right: 0,
           zIndex: 100,
           backdropFilter: "blur(18px) saturate(180%)",
-          background: "rgba(253, 248, 245, 0.92)",
-          borderBottom: "1px solid rgba(180,120,120,0.1)",
+          background: isDark ? "rgba(15, 11, 12, 0.95)" : "rgba(253, 248, 245, 0.92)",
+          borderBottom: isDark ? "1px solid rgba(42,34,36,0.5)" : "1px solid rgba(180,120,120,0.1)",
           transition: "background 0.3s ease, box-shadow 0.3s ease",
         }}
       >
@@ -608,18 +675,41 @@ export default function Navbar() {
               <span style={{ fontWeight: 400, opacity: 0.8 }}>+</span>
               Cart ({count})
             </Link>
+
+            {/* Dark mode toggle */}
             <button
-  onClick={() => router.push("/search")}
-  className="nb-link"
-  style={{
-    fontSize: "0.65rem",
-    fontWeight: 600,
-    letterSpacing: "0.13em",
-    textTransform: "uppercase",
-  }}
->
-  Search
-</button>
+              className="nb-dark-toggle"
+              onClick={() => {
+                const next = !isDark;
+                setIsDark(next);
+                document.documentElement.classList.toggle("dark", next);
+                localStorage.setItem("zyvora-theme", next ? "dark" : "light");
+              }}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDark ? "Light mode" : "Dark mode"}
+            >
+              {isDark ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              )}
+            </button>
+
+            <button
+              onClick={() => router.push("/search")}
+              className="nb-link"
+              style={{ fontSize: "0.65rem", fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase" }}
+            >
+              Search
+            </button>
             
           </div>
 

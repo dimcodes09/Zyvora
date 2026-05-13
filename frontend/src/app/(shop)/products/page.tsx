@@ -349,9 +349,9 @@ function ProductsPageInner() {
   const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? "Featured";
 
   return (
-    <main className="min-h-screen bg-[#FDF8F5]">
+    <main className="min-h-screen bg-[#FDF8F5] dark:bg-brand-darkBg">
       {/* ── Hero Header ── */}
-      <div className="bg-[#FDF8F5] border-b border-rose-100 px-4 sm:px-6 lg:px-10 pt-12 pb-10">
+      <div className="bg-[#FDF8F5] dark:bg-brand-darkBg border-b border-rose-100 dark:border-brand-borderDark px-4 sm:px-6 lg:px-10 pt-12 pb-10">
         <p className="text-xs font-semibold tracking-[0.25em] uppercase text-[#C97B84] mb-2">
           Our Collection
         </p>
@@ -394,14 +394,14 @@ function ProductsPageInner() {
           <div className="relative" ref={sortRef}>
             <button
               onClick={() => setSortOpen(!sortOpen)}
-              className="flex items-center gap-2 text-sm text-[#3D2A2D] font-medium border border-rose-200 rounded-xl px-4 py-2 bg-white hover:border-[#C97B84] transition-colors"
+              className="flex items-center gap-2 text-sm text-[#3D2A2D] dark:text-brand-darkText font-medium border border-rose-200 dark:border-brand-borderDark rounded-xl px-4 py-2 bg-white dark:bg-brand-darkCard hover:border-[#C97B84] dark:hover:border-brand-primaryDark transition-colors"
             >
               <span className="text-[#7A5C60] font-normal">Sort by:</span>
               {currentSortLabel}
               <ChevronDown size={13} className={`transition-transform ${sortOpen ? "rotate-180" : ""}`} />
             </button>
             {sortOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white border border-rose-100 rounded-2xl shadow-xl z-30 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-brand-darkCard border border-rose-100 dark:border-brand-borderDark rounded-2xl shadow-xl z-30 overflow-hidden">
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -447,7 +447,7 @@ function ProductsPageInner() {
         <div className="flex gap-8 items-start">
           {/* ── Filter Panel ── */}
           {filterOpen && (
-            <aside className="w-64 shrink-0 bg-white border border-rose-100 rounded-2xl p-5 shadow-sm sticky top-24 z-20">
+            <aside className="w-64 shrink-0 bg-white dark:bg-brand-darkCard border border-rose-100 dark:border-brand-borderDark rounded-2xl p-5 shadow-sm sticky top-24 z-20">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-sm font-bold text-[#3D2A2D]">Filters</h3>
                 <button onClick={() => setFilterOpen(false)}>
@@ -542,7 +542,7 @@ function ProductsPageInner() {
                     <Link
                       key={product._id}
                       href={`/products/${product._id}`}
-                      className="group bg-white border border-rose-100 rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-rose-100 hover:-translate-y-0.5 transition-all duration-200"
+                      className="group bg-white dark:bg-brand-darkCard border border-rose-100 dark:border-brand-borderDark rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-rose-100 hover:-translate-y-0.5 transition-all duration-200"
                     >
                       <div className="relative aspect-square w-full bg-[#FAF0F1] overflow-hidden">
                         <Image
@@ -573,7 +573,7 @@ function ProductsPageInner() {
                           {product.category || "Luxury Gift"}
                         </p>
                         <p
-                          className="text-sm font-semibold text-[#3D2A2D] truncate leading-snug"
+                          className="text-sm font-semibold text-[#3D2A2D] dark:text-brand-darkText truncate leading-snug"
                           style={{ fontFamily: "'Playfair Display', serif" }}
                         >
                           {product.name}
