@@ -21,6 +21,9 @@ import aiRoutes from './routes/aiRoutes.js';
 // ✅ NEW
 import hamperRoutes from './routes/hamperRoutes.js';
 import sellerRoutes from "./routes/sellerRoutes.js";
+// In backend/src/app.ts — add alongside your existing routes
+import gamificationRoutes from "./routes/gamification.routes.js";
+import giftRoutes from "./routes/giftRoutes.js";
 
 const app: Application = express();
 
@@ -97,6 +100,11 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/hamper', hamperRoutes);
 
 app.use("/api/seller", sellerRoutes);
+
+app.use("/api/user", gamificationRoutes);
+
+app.use("/api/gift", giftRoutes);
+
 
 // ─── Error Handling ───────────────────────────────────────────
 app.use(notFound);

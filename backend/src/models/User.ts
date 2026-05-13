@@ -1,10 +1,20 @@
-import { Schema, model, Document, Model } from 'mongoose';
+import { Schema, model, Document, Model, type Types } from 'mongoose'; // FIXED: imported Types so reward subdocument _id matches Mongoose schema typing
 import bcrypt from 'bcryptjs';
 import { config } from '../config/env.js';
 
 // ─── Types ────────────────────────────────────────────────────
 
 export type UserRole = 'user' | 'admin';
+
+// ─── NEW TYPES (ADDED) ────────────────────────────────────────
+
+export interface IReward {
+  _id?: Types.ObjectId; // FIXED: Mongoose array subdocuments include an _id by default
+  type: 'discount' | 'free_delivery';
+  value?: number;
+  used: boolean;
+  expiresAt?: Date;
+}
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -13,6 +23,13 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: UserRole;
+
+  // ✅ ADDED FIELDS (NO BREAK)
+  points: number;
+  streak: number;
+  lastActive: Date | null;
+  rewards: IReward[];
+
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -46,13 +63,46 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: [true, 'Password is required'],
       minlength: [8, 'Password must be at least 8 characters'],
-      select: false, // never returned
+      select: false,
     },
     role: {
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
     },
+
+    // ─── ✅ GAMIFICATION FIELDS (ADDED ONLY) ─────────────────
+
+    points: {
+      type: Number,
+      default: 0,
+    },
+    streak: {
+      type: Number,
+      default: 0,
+    },
+    lastActive: {
+      type: Date,
+      default: null,
+    },
+    rewards: [
+      {
+        type: {
+          type: String,
+          enum: ['discount', 'free_delivery'],
+        },
+        value: {
+          type: Number,
+        },
+        used: {
+          type: Boolean,
+          default: false,
+        },
+        expiresAt: {
+          type: Date,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

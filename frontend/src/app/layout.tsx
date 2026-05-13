@@ -7,6 +7,8 @@ import AuthProvider from "@/components/AuthProvider";
 import ClientEffects from "@/components/home/ClientEffects";
 import FloatingChat from "@/components/FloatingChat";
 import { HamperProvider } from "@/context/HamperContext";
+import GamificationCard from '@/components/GamificationCard';
+
 
 export const metadata: Metadata = {
   title: "Zyvora — Your Choice",
@@ -34,7 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <Footer />
 
-            {/* Floating AI chat (bottom-right, z-9999) */}
+            {/* Floating overlays */}
+            <GamificationCard />
             <FloatingChat />
           </HamperProvider>
         </AuthProvider>

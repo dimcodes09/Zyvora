@@ -29,6 +29,7 @@ export default function ReelCard({ product }: { product: ReelProduct }) {
 
   return (
     <div ref={cardRef} className="reel-card">
+      <div className="reel-shell">
       {/* Video — src is now product.reelVideo from DB */}
       <video
         ref={videoRef}
@@ -59,15 +60,31 @@ export default function ReelCard({ product }: { product: ReelProduct }) {
         </button>
       </div>
 
+      </div>
+
       <style jsx>{`
         .reel-card {
           position: relative;
           width: 100%;
           height: 100dvh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           flex-shrink: 0;
           overflow: hidden;
-          background: #f0ddd7;
+          background: #0b0b0b;
+          padding: 4.5rem 1rem 3.5rem;
           scroll-snap-align: start;
+        }
+        .reel-shell {
+          position: relative;
+          width: min(calc((100dvh - 8rem) * 9 / 16), 475px, calc(100vw - 2rem));
+          aspect-ratio: 9 / 16;
+          max-height: calc(100dvh - 8rem);
+          overflow: hidden;
+          background: #f0ddd7;
+          border-radius: 1rem;
+          box-shadow: 0 28px 70px rgba(0,0,0,0.42);
         }
         .reel-video {
           position: absolute;
@@ -106,12 +123,11 @@ export default function ReelCard({ product }: { product: ReelProduct }) {
           bottom: 0;
           left: 0;
           right: 0;
-          padding: 2.5rem 1.75rem 3.5rem;
+          padding: 2.5rem 1.75rem 1.5rem;
           display: flex;
-          flex-direction: row;
-          align-items: flex-end;
-          justify-content: space-between;
-          gap: 1.25rem;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1rem;
         }
         .reel-meta { display: flex; flex-direction: column; gap: 0.3rem; }
         .reel-label {
@@ -140,7 +156,7 @@ export default function ReelCard({ product }: { product: ReelProduct }) {
           margin: 0.2rem 0 0;
         }
         .reel-btn {
-          flex-shrink: 0;
+          width: 100%;
           background: #7b1c30;
           color: #fdf5f0;
           border: none;
@@ -159,13 +175,19 @@ export default function ReelCard({ product }: { product: ReelProduct }) {
         .reel-btn:active { transform: translateY(0); }
 
         @media (max-width: 480px) {
-          .reel-overlay {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 2rem 1.25rem 3rem;
+          .reel-card {
+            padding: 4rem 0.85rem 3rem;
           }
-          .reel-btn { width: 100%; text-align: center; padding: 0.85rem 1rem; }
+          .reel-shell {
+            width: min(calc((100dvh - 7rem) * 9 / 16), calc(100vw - 1.7rem));
+            max-height: calc(100dvh - 7rem);
+            border-radius: 0.85rem;
+          }
+          .reel-overlay {
+            gap: 1rem;
+            padding: 2rem 1.25rem 1.25rem;
+          }
+          .reel-btn { text-align: center; padding: 0.85rem 1rem; }
         }
       `}</style>
     </div>

@@ -8,6 +8,9 @@ import type {
   AuthRequest,
 } from '../types/auth.js';
 
+// ✅ ADD THIS IMPORT (SAFE)
+import { addUserPoints, updateUserStreak } from "../services/gamification.service.js";
+
 // ─── POST /api/auth/register ──────────────────────────────────
 export const register = async (
   req: Request<object, object, RegisterBody>,
@@ -17,42 +20,36 @@ export const register = async (
   try {
     const { name, email, password, role } = req.body;
 
-    // ✅ validation
     if (!name || !email || !password) {
       return next(new AppError('Name, email, and password are required.', 400));
     }
 
-    // ✅ normalize email
     const normalizedEmail = email.toLowerCase();
 
-    // ✅ check existing user
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return next(new AppError('An account with this email already exists.', 409));
     }
 
-    // ✅ create user
     const user = await User.create({
-  name,
-  email: normalizedEmail,
-  password,
-  role: role === "admin" ? "admin" : "user", // ✅ ADD THIS
-});
+      name,
+      email: normalizedEmail,
+      password,
+      role: role === "admin" ? "admin" : "user",
+    });
 
-    // ✅ generate token
     const token = signToken(String(user._id), user.role);
 
-    // ✅ correct response format (frontend compatible)
     res.status(201).json({
       success: true,
       data: {
         token,
         user: {
-  id: String(user._id),
-  name: user.name,
-  email: user.email,
-  role: user.role, // ✅ ADD THIS
-},
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       },
     });
 
@@ -70,34 +67,39 @@ export const login = async (
   try {
     const { email, password } = req.body;
 
-    // ✅ validation
     if (!email || !password) {
       return next(new AppError('Email and password are required.', 400));
     }
 
     const normalizedEmail = email.toLowerCase();
 
-    // ✅ find user
     const user = await User.findByEmail(normalizedEmail);
 
     if (!user || !(await user.comparePassword(password))) {
       return next(new AppError('Invalid email or password.', 401));
     }
 
-    // ✅ token
     const token = signToken(String(user._id), user.role);
 
-    // ✅ consistent response
+    // ─── ✅ GAMIFICATION ADD (SAFE) ─────────────────────────
+
+    const userId = String(user._id);
+
+    await updateUserStreak(userId);
+    await addUserPoints(userId, "LOGIN");
+
+    // ───────────────────────────────────────────────────────
+
     res.status(200).json({
       success: true,
       data: {
         token,
         user: {
-  id: String(user._id),
-  name: user.name,
-  email: user.email,
-  role: user.role, // ✅ ADD THIS
-},
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
       },
     });
 
@@ -127,14 +129,17 @@ export const getMe = async (
       return next(new AppError('User not found.', 404));
     }
 
-    // ✅ FORCE return role
     res.status(200).json({
       success: true,
       data: {
         _id: String(user._id),
         name: user.name,
         email: user.email,
-        role: user.role, // 🔥 THIS FIXES NAVBAR
+        role: user.role,
+        points: user.points ?? 0,
+        streak: user.streak ?? 0,
+        lastActive: user.lastActive ?? null,
+        rewards: user.rewards ?? [],
       },
     });
 

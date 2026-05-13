@@ -9,6 +9,7 @@ import {
   clearCheckoutSource,
   getCheckoutSource,
 } from '../utils/checkoutSource.js';
+import { addUserPoints } from "../services/gamification.service.js"; // ✅ already present
 
 // ─── POST /api/orders ─────────────────────────────────────────
 
@@ -32,6 +33,18 @@ export const createOrder = async (
       paymentMethod: 'cod',
       ...(checkout.notes ? { notes: checkout.notes } : {}),
     });
+
+    // ─── ✅ GAMIFICATION ADD (SAFE) ─────────────────────────
+
+    await addUserPoints(userId, "ORDER");
+
+    // check if first order
+    const orderCount = await Order.countDocuments({ user: userId });
+    if (orderCount === 1) {
+      await addUserPoints(userId, "FIRST_ORDER");
+    }
+
+    // ───────────────────────────────────────────────────────
 
     await clearCheckoutSource(userId, source);
 

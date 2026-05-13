@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { buildProductFilter } from '../utils/productFilterBuilder.js';
 import type { ProductQueryParams, PaginatedResponse } from '../types/productQuery.js';
 import type { IProduct } from '../models/Product.js';
+import { addUserPoints } from '../services/gamification.service.js'; // ✅ NEW
 
 // ─── GET /api/products ────────────────────────────────────────
 export const getProducts = async (
@@ -130,7 +131,7 @@ export const deleteProduct = async (
   }
 };
 
-// ─── GET /api/products/:id/similar ───────────────────────────  ← ADD FROM HERE
+// ─── GET /api/products/:id/similar ───────────────────────────
 export const getSimilarProducts = async (
   req: Request,
   res: Response,
@@ -173,7 +174,6 @@ export const getSimilarProducts = async (
     next(error);
   }
 };
-// ← ADD UNTIL HERE
 
 // ─── GET /api/products/search ───────────────────────────
 export const searchProducts = async (
@@ -189,7 +189,6 @@ export const searchProducts = async (
       return;
     }
 
-    // Search across name OR category so "floral", "bags", "watches" etc. all work
     const products = await Product.find({
       $or: [
         { name:     { $regex: q, $options: "i" } },
@@ -206,5 +205,54 @@ export const searchProducts = async (
     });
   } catch (err) {
     next(err);
+  }
+};
+
+// ─── POST /api/products/:id/review ─────────────────────────── ✅ NEW
+export const addReview = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { rating, comment } = req.body;
+    const productId = req.params.id;
+    const userId = (req as any).user._id;
+
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      return next(new AppError('Invalid product ID', 400));
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return next(new AppError('Rating must be between 1 and 5', 400));
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) return next(new AppError('Product not found', 404));
+
+    // Prevent duplicate reviews
+    const alreadyReviewed = (product as any).reviews?.some(
+      (r: any) => r.user.toString() === userId.toString()
+    );
+    if (alreadyReviewed) {
+      return next(new AppError('You have already reviewed this product', 400));
+    }
+
+    // Push new review
+    (product as any).reviews = (product as any).reviews ?? [];
+    (product as any).reviews.push({
+      user: userId,
+      rating: Number(rating),
+      comment: comment ?? '',
+    });
+
+    await product.save();
+
+    // ✅ Award +5 points for review
+    await addUserPoints(userId.toString(), 'REVIEW');
+
+    res.status(201).json({ success: true, message: 'Review submitted successfully' });
+  } catch (error) {
+    next(error);
   }
 };

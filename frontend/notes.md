@@ -18,4 +18,4 @@ RouteDescription/seller/loginOTP
 
  pending → accepted → packed → delivered
    ↘                              
-  cancelled (from pending or accepted only)
+  cancelled (from pending or accepted only)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
