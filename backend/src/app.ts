@@ -24,6 +24,7 @@ import sellerRoutes from "./routes/sellerRoutes.js";
 // In backend/src/app.ts — add alongside your existing routes
 import gamificationRoutes from "./routes/gamification.routes.js";
 import giftRoutes from "./routes/giftRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 
 const app: Application = express();
 
@@ -126,6 +127,7 @@ app.use("/api/seller", sellerRoutes);
 app.use("/api/user", gamificationRoutes);
 
 app.use("/api/gift", giftRoutes);
+app.use("/api/support", supportRoutes);
 
 
 // ─── Error Handling ───────────────────────────────────────────

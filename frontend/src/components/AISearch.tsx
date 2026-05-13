@@ -176,17 +176,19 @@ export default function AISearch() {
     recognition.onerror = (event: any) => {
       setIsListening(false);
       const msg: Record<string, string> = {
-        "not-allowed": "Microphone permission denied. Please allow mic access and try again.",
-        "no-speech":   "No speech detected. Please speak clearly and try again.",
-        "network":     "Network error during voice recognition.",
+        "not-allowed": "Microphone access denied — click the lock icon in your browser address bar and allow microphone.",
+        "no-speech":   "No speech detected. Please speak clearly after clicking the mic.",
+        "network":     "Voice recognition needs a secure connection. Open the app via localhost (not a LAN IP like 192.168.x.x) or deploy with HTTPS.",
         "aborted":     "Voice input was cancelled.",
       };
-      setVoiceError(msg[event.error] ?? `Voice error: ${event.error}`);
+      setVoiceError(msg[event.error] ?? `Voice recognition error: ${event.error}`);
     };
 
     recognition.onend = () => setIsListening(false);
     recognition.start();
   };
+
+  const dismissVoiceError = () => setVoiceError(null);
 
   return (
     <>
@@ -216,9 +218,12 @@ export default function AISearch() {
         .zy-spinner { width:16px; height:16px; border:2px solid rgba(255,248,245,0.35); border-top-color:#fff8f5; border-radius:50%; animation:spin 0.7s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
 
-        .zy-mic-status { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; margin-top:9px; max-width:680px; animation:fadeUp 0.3s ease both; }
+        .zy-mic-status { display:flex; align-items:center; gap:10px; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; margin-top:9px; max-width:680px; animation:fadeUp 0.3s ease both; line-height:1.55; }
         .zy-mic-status.listening { color:#8b2e2e; }
         .zy-mic-status.error { color:#c0392b; }
+        .zy-mic-retry { background:none; border:none; cursor:pointer; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#8b2e2e; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:'DM Sans',sans-serif; white-space:nowrap; }
+        .zy-mic-dismiss { background:none; border:none; cursor:pointer; font-size:13px; color:#c0392b; padding:0; line-height:1; opacity:0.6; }
+        .zy-mic-dismiss:hover { opacity:1; }
 
         .filter-pills { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:20px; animation:fadeUp 0.4s ease both; }
         .pills-label { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#b08080; margin-right:4px; }
@@ -309,8 +314,16 @@ export default function AISearch() {
           </div>
 
           {/* Listening / voice error label */}
-          {isListening && <p className="zy-mic-status listening">🎤 Listening… speak now</p>}
-          {!isListening && voiceError && <p className="zy-mic-status error">⚠ {voiceError}</p>}
+          {isListening && (
+            <p className="zy-mic-status listening">🎤 Listening… speak now</p>
+          )}
+          {!isListening && voiceError && (
+            <div className="zy-mic-status error">
+              <span>⚠ {voiceError}</span>
+              <button className="zy-mic-retry" onClick={startListening}>Retry</button>
+              <button className="zy-mic-dismiss" onClick={dismissVoiceError} aria-label="Dismiss">✕</button>
+            </div>
+          )}
 
           {/* Suggestions */}
           {showSuggestions && suggestions.length > 0 && (
