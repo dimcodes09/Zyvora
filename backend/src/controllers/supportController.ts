@@ -51,18 +51,18 @@ Generate a polite, professional customer support reply in 4–5 lines.`;
 
     // 2. Send Email
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.EMAIL_PORT || "587"),
-      secure: process.env.EMAIL_SECURE === "true",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
-        user: process.env.EMAIL_USER || "dummy@gmail.com",
-        pass: process.env.EMAIL_PASS || "dummy_pass",
+        user: "nidk0321@gmail.com",
+        pass: "tvhkoeveournjvkg",
       },
     });
 
     const mailOptions = {
-      from: `"Zyvora Support" <${process.env.EMAIL_USER || "support@zyvora.com"}>`,
-      to: email,
+      from: `"Zyvora Support" <nidk0321@gmail.com>`,
+      to: "divyanshukubde8@gmail.com",
       subject: "Support Request - Zyvora",
       text: `Dear ${name},\n\n${aiResponse}\n\n${orderId ? `Reference Order ID: ${orderId}\n\n` : ''}Best regards,\nZyvora Support Team`,
     };

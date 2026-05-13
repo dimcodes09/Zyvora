@@ -447,13 +447,23 @@ function ProductsPageInner() {
         <div className="flex gap-8 items-start">
           {/* ── Filter Panel ── */}
           {filterOpen && (
-            <aside className="w-64 shrink-0 bg-white dark:bg-brand-darkCard border border-rose-100 dark:border-brand-borderDark rounded-2xl p-5 shadow-sm sticky top-24 z-20">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-bold text-[#3D2A2D]">Filters</h3>
-                <button onClick={() => setFilterOpen(false)}>
-                  <X size={15} className="text-[#7A5C60] hover:text-[#C97B84]" />
-                </button>
-              </div>
+            <aside className={`
+              fixed inset-0 z-[100] lg:relative lg:inset-auto lg:z-20
+              lg:w-64 lg:shrink-0 bg-white dark:bg-brand-darkCard border border-rose-100 dark:border-brand-borderDark 
+              lg:rounded-2xl p-5 shadow-sm lg:sticky lg:top-24
+              transition-all duration-300
+              ${filterOpen ? "flex" : "hidden"} flex-col
+            `}>
+              {/* Mobile Backdrop */}
+              <div className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setFilterOpen(false)} />
+              
+              <div className="relative z-10 bg-white dark:bg-brand-darkCard p-6 h-full lg:p-0 overflow-y-auto lg:overflow-visible w-[85%] lg:w-full">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-sm font-bold text-[#3D2A2D]">Filters</h3>
+                  <button onClick={() => setFilterOpen(false)}>
+                    <X size={15} className="text-[#7A5C60] hover:text-[#C97B84]" />
+                  </button>
+                </div>
 
               <div className="mb-6">
                 <p className="text-[10px] font-bold tracking-widest uppercase text-[#C97B84] mb-3">Category</p>
@@ -498,10 +508,11 @@ function ProductsPageInner() {
                 </button>
               </div>
 
-              <div className="border-t border-rose-100 mt-5 mb-4" />
-              <button onClick={clearAllFilters} className="w-full text-sm text-[#C97B84] font-semibold hover:underline">
-                Clear All Filters
-              </button>
+                <div className="border-t border-rose-100 mt-5 mb-4" />
+                <button onClick={clearAllFilters} className="w-full text-sm text-[#C97B84] font-semibold hover:underline">
+                  Clear All Filters
+                </button>
+              </div>
             </aside>
           )}
 

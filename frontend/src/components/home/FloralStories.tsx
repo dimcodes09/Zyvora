@@ -318,7 +318,7 @@ export default function FloralStories() {
     <section
       ref={sectionRef}
       id="floral"
-      style={{ position: "relative", padding: "7rem 3rem 8rem", overflow: "hidden", background: "linear-gradient(160deg, #F9F5F0 0%, #F2EBE3 60%, #F7EEF0 100%)" }}
+      style={{ position: "relative", padding: "clamp(4rem, 10vw, 7rem) clamp(1rem, 5vw, 3rem) clamp(4rem, 10vw, 8rem)", overflow: "hidden", background: "linear-gradient(160deg, #F9F5F0 0%, #F2EBE3 60%, #F7EEF0 100%)" }}
     >
       {/* Grain texture overlay */}
       <div style={{ position: "absolute", inset: 0, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`, opacity: 0.03, pointerEvents: "none", zIndex: 0 }} />

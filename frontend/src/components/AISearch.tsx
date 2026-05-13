@@ -3,6 +3,40 @@
 import { useState, useCallback, useEffect, useRef, KeyboardEvent } from "react";
 import { resolveProductImage } from "@/lib/productImage";
 
+// ── Web Speech API types (not in lib.dom.d.ts by default) ────────────────────
+interface SpeechRecognitionResult {
+  readonly [index: number]: SpeechRecognitionAlternative;
+  readonly length: number;
+}
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+interface SpeechRecognitionResultList {
+  readonly [index: number]: SpeechRecognitionResult;
+  readonly length: number;
+}
+interface SpeechRecognitionEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+interface SpeechRecognitionInstance extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onstart:  (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror:  ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend:    (() => void) | null;
+  start(): void;
+}
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface Product { _id: string; name: string; category: string; price: number; image?: string; }
 interface SearchFilters { category: string | null; minPrice: number | null; maxPrice: number | null; keywords: string[]; }
 interface SearchResponse { success: boolean; filters: SearchFilters; products: Product[]; }
@@ -155,25 +189,31 @@ export default function AISearch() {
   // ── Voice Search ──────────────────────────────────────────────────────────
   const startListening = () => {
     setVoiceError(null);
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
+
+    // Resolve the constructor with proper typing — no `any`
+    const SRConstructor: SpeechRecognitionConstructor | undefined =
+      (window as Window & { SpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition;
+
+    if (!SRConstructor) {
       setVoiceError("Voice search not supported. Please use Chrome or Edge.");
       return;
     }
-    const recognition = new SR();
+
+    const recognition: SpeechRecognitionInstance = new SRConstructor();
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setIsListening(true);
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const text: string = event.results[0][0].transcript;
       setQuery(text);
       runSearchRef.current(text); // always calls latest — no stale closure
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       setIsListening(false);
       const msg: Record<string, string> = {
         "not-allowed": "Microphone access denied — click the lock icon in your browser address bar and allow microphone.",
@@ -218,45 +258,53 @@ export default function AISearch() {
         .zy-spinner { width:16px; height:16px; border:2px solid rgba(255,248,245,0.35); border-top-color:#fff8f5; border-radius:50%; animation:spin 0.7s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
 
-        .zy-mic-status { display:flex; align-items:center; gap:10px; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; margin-top:9px; max-width:680px; animation:fadeUp 0.3s ease both; line-height:1.55; }
-        .zy-mic-status.listening { color:#8b2e2e; }
-        .zy-mic-status.error { color:#c0392b; }
-        .zy-mic-retry { background:none; border:none; cursor:pointer; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#8b2e2e; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:'DM Sans',sans-serif; white-space:nowrap; }
-        .zy-mic-dismiss { background:none; border:none; cursor:pointer; font-size:13px; color:#c0392b; padding:0; line-height:1; opacity:0.6; }
-        .zy-mic-dismiss:hover { opacity:1; }
+        .filter-pills {
+          display: flex; flex-wrap: wrap; align-items: center;
+          gap: 8px; margin-top: 20px; animation: fadeUp 0.4s ease both;
+        }
+        .pills-label { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #b08080; margin-right: 4px; }
+        .pill { background: #f5e9e9; border: 1px solid #e0c4c4; color: #7a3030; font-size: 12px; padding: 4px 14px; border-radius: 40px; font-weight: 400; }
 
-        .filter-pills { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:20px; animation:fadeUp 0.4s ease both; }
-        .pills-label { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:#b08080; margin-right:4px; }
-        .pill { background:#f5e9e9; border:1px solid #e0c4c4; color:#7a3030; font-size:12px; padding:4px 14px; border-radius:40px; font-weight:400; }
-        .zy-results-header { display:flex; align-items:baseline; gap:12px; margin:52px 0 28px; animation:fadeUp 0.4s ease both; }
-        .zy-results-title { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:400; color:#2b1414; margin:0; }
-        .zy-results-count { font-size:12px; color:#b08080; letter-spacing:0.08em; }
-        .zy-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:24px; animation:fadeUp 0.5s ease both; }
-        .zy-card { background:#fffaf9; border:1px solid #eedcdc; border-radius:16px; overflow:hidden; transition:transform 0.2s,box-shadow 0.2s; }
-        .zy-card:hover { transform:translateY(-4px); box-shadow:0 12px 36px rgba(139,46,46,0.1); }
-        .card-img-wrap { position:relative; background:linear-gradient(135deg,#f9eded 0%,#f0e0e0 100%); height:180px; overflow:hidden; }
-        .card-img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.35s ease; }
-        .zy-card:hover .card-img { transform:scale(1.05); }
-        .card-badge { position:absolute; top:12px; right:12px; background:rgba(255,250,249,0.9); border:1px solid #e5cece; color:#8b2e2e; font-size:9px; letter-spacing:0.14em; text-transform:uppercase; padding:4px 10px; border-radius:20px; font-weight:500; }
-        .card-body { padding:18px 20px 20px; }
-        .card-name { font-size:14px; font-weight:400; color:#3a2020; margin:0 0 10px; line-height:1.4; }
-        .card-price { font-family:'Cormorant Garamond',serif; font-size:17px; color:#8b2e2e; margin:0; font-weight:600; }
-        .shimmer-img { width:100%; height:180px; background:linear-gradient(90deg,#f0e0e0 25%,#f9eded 50%,#f0e0e0 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
-        .shimmer-line { height:12px; border-radius:6px; margin:0 20px 10px; background:linear-gradient(90deg,#f0e0e0 25%,#f9eded 50%,#f0e0e0 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; }
-        .shimmer-line.long { width:calc(100% - 40px); margin-top:18px; } .shimmer-line.short { width:55%; } .shimmer-line.price { width:35%; height:16px; }
-        @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
-        .zy-state-box { text-align:center; padding:60px 24px; animation:fadeUp 0.4s ease both; }
-        .zy-state-icon { font-size:36px; margin-bottom:16px; display:block; }
-        .zy-state-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; color:#2b1414; margin:0 0 8px; font-weight:400; }
-        .zy-state-msg { font-size:13px; color:#b08080; font-weight:300; max-width:360px; margin:0 auto; line-height:1.7; }
-        .zy-error-box { display:flex; align-items:flex-start; gap:12px; background:#fff0f0; border:1px solid #f0d0d0; border-radius:12px; padding:16px 20px; max-width:680px; margin-top:20px; animation:fadeUp 0.3s ease both; }
-        .zy-error-text { font-size:13px; color:#8b2e2e; font-weight:400; line-height:1.5; }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-        @media (max-width:640px) {
-          .zy-search-root { padding:48px 20px 60px; }
-          .zy-search-wrap { padding:6px 6px 6px 20px; }
-          .zy-btn { padding:11px 18px; font-size:11px; }
-          .zy-grid { grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; }
+        .zy-results-header { display: flex; align-items: baseline; gap: 12px; margin: 52px 0 28px; animation: fadeUp 0.4s ease both; }
+        .zy-results-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; color: #2b1414; margin: 0; }
+        .zy-results-count { font-size: 12px; color: #b08080; letter-spacing: 0.08em; }
+
+        .zy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; animation: fadeUp 0.5s ease both; }
+
+        .zy-card { background: #fffaf9; border: 1px solid #eedcdc; border-radius: 16px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .zy-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(139, 46, 46, 0.1); }
+
+        .card-img-wrap { position: relative; background: linear-gradient(135deg, #f9eded 0%, #f0e0e0 100%); height: 180px; overflow: hidden; }
+        .card-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.35s ease; }
+        .zy-card:hover .card-img { transform: scale(1.05); }
+        .card-badge { position: absolute; top: 12px; right: 12px; background: rgba(255,250,249,0.9); border: 1px solid #e5cece; color: #8b2e2e; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+        .card-body { padding: 18px 20px 20px; }
+        .card-name { font-size: 14px; font-weight: 400; color: #3a2020; margin: 0 0 10px; line-height: 1.4; }
+        .card-price { font-family: 'Cormorant Garamond', serif; font-size: 17px; color: #8b2e2e; margin: 0; font-weight: 600; }
+
+        .shimmer-card .card-img-wrap { height: 180px; }
+        .shimmer-img { width: 100%; height: 180px; background: linear-gradient(90deg, #f0e0e0 25%, #f9eded 50%, #f0e0e0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+        .shimmer-line { height: 12px; border-radius: 6px; margin: 0 20px 10px; background: linear-gradient(90deg, #f0e0e0 25%, #f9eded 50%, #f0e0e0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+        .shimmer-line.long { width: calc(100% - 40px); margin-top: 18px; }
+        .shimmer-line.short { width: 55%; }
+        .shimmer-line.price { width: 35%; height: 16px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .zy-state-box { text-align: center; padding: 60px 24px; animation: fadeUp 0.4s ease both; }
+        .zy-state-icon { font-size: 36px; margin-bottom: 16px; display: block; }
+        .zy-state-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: #2b1414; margin: 0 0 8px; font-weight: 400; }
+        .zy-state-msg { font-size: 13px; color: #b08080; font-weight: 300; max-width: 360px; margin: 0 auto; line-height: 1.7; }
+
+        .zy-error-box { display: flex; align-items: flex-start; gap: 12px; background: #fff0f0; border: 1px solid #f0d0d0; border-radius: 12px; padding: 16px 20px; max-width: 680px; margin-top: 20px; animation: fadeUp 0.3s ease both; }
+        .zy-error-text { font-size: 13px; color: #8b2e2e; font-weight: 400; line-height: 1.5; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 640px) {
+          .zy-search-root { padding: 48px 20px 60px; }
+          .zy-search-wrap { padding: 6px 6px 6px 20px; }
+          .zy-btn { padding: 11px 18px; font-size: 11px; }
+          .zy-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
         }
       `}</style>
 

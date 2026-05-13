@@ -228,6 +228,37 @@ export default function HamperPage() {
         .hamper-row     { animation: fadeSlideIn 0.25s ease; }
         ::-webkit-scrollbar       { width: 3px; }
         ::-webkit-scrollbar-thumb { background: #e0b8b8; border-radius: 4px; }
+
+        /* ── Responsive Hamper ── */
+        @media (max-width: 1024px) {
+          #hamper-main { 
+            flex-direction: column !important; 
+            padding-bottom: 120px !important; 
+          }
+          #hamper-left { 
+            padding: 24px 20px !important; 
+          }
+          #hamper-divider { display: none !important; }
+          #hamper-right { 
+            width: 100% !important; 
+            height: auto !important; 
+            position: relative !important; 
+            padding: 30px 20px !important;
+            border-top: 1px solid #e8c8c8;
+          }
+          .hamper-header-content {
+            padding: 30px 20px 20px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          #hamper-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+          .zy-card-body { padding: 12px !important; }
+          .zy-card-name { font-size: 13px !important; }
+          .zy-add-btn { padding: 6px 8px !important; font-size: 9px !important; }
+        }
       `}</style>
 
       <style>{`
@@ -262,7 +293,7 @@ export default function HamperPage() {
         </div>
 
         {/* Header */}
-        <div id="hamper-header" style={styles.header}>
+        <div id="hamper-header" style={styles.header} className="hamper-header-content">
           <div style={styles.headerLabel}>
             <span style={styles.headerLabelLine} />
             ZYVORA &nbsp;·&nbsp; GIFTING STUDIO
@@ -276,10 +307,10 @@ export default function HamperPage() {
         </div>
 
         {/* Split layout */}
-        <div style={styles.main}>
+        <div id="hamper-main" style={styles.main}>
 
           {/* ──── LEFT: product grid ──── */}
-          <div style={styles.leftPanel}>
+          <div id="hamper-left" style={styles.leftPanel}>
             <div style={styles.gridHeader}>
               <span style={styles.gridTitle}>✦ Choose Your Items</span>
               <span style={styles.gridCount}>
@@ -301,13 +332,13 @@ export default function HamperPage() {
             )}
 
             {loading && (
-              <div style={styles.grid}>
+              <div id="hamper-grid" style={styles.grid}>
                 {Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
             )}
 
             {!loading && !error && (
-              <div style={styles.grid}>
+              <div id="hamper-grid" style={styles.grid}>
                 {products.map((product) => {
                   const isAdded  = addedIds.has(product._id);
                   const inHamper = items.find((i) => i._id === product._id); // context items
@@ -340,7 +371,7 @@ export default function HamperPage() {
                             ₹{product.price.toLocaleString("en-IN")}
                           </span>
                           <button
-                            className="zy-add"
+                            className="zy-add zy-add-btn"
                             style={{ ...styles.addBtn, ...(isAdded ? styles.addBtnAdded : {}) }}
                             onClick={() => handleAdd(product)}
                           >
@@ -431,7 +462,7 @@ export default function HamperPage() {
             {/* ── ADDED LINE 2: Gift Message Box ── */}
             {items.length > 0 && !hamperLoading && (
               <GiftMessageBox onGiftSaved={(giftId) => {
-                (window as Window & Record<string, unknown>).__hamperGiftId = giftId;
+                (window as any).__hamperGiftId = giftId;
               }} />
             )}
 
@@ -460,7 +491,7 @@ export default function HamperPage() {
                   style={{ ...styles.checkoutBtn, ...(syncStatus === "saving" ? { opacity: 0.6, cursor: "not-allowed" } : {}) }}
                   disabled={syncStatus === "saving"}
                   onClick={() => {
-                    const gid = (window as Window & Record<string, unknown>).__hamperGiftId as string | undefined;
+                    const gid = ((window as Window) as any).__hamperGiftId as string | undefined;
                     window.location.href = `/checkout?type=hamper${gid ? `&giftId=${gid}` : ""}`;
                   }}
                 >
