@@ -8,6 +8,7 @@ import ClientEffects from "@/components/home/ClientEffects";
 import FloatingChat from "@/components/FloatingChat";
 import { HamperProvider } from "@/context/HamperContext";
 import GamificationCard from '@/components/GamificationCard';
+import GoogleAuthWrapper from "@/components/GoogleAuthWrapper";
 
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
       {/* Blocking inline script — prevents flash of wrong theme */}
       <head>
         <script
@@ -35,25 +36,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <ClientEffects />
 
-        <AuthProvider>
-          {/*
-           * HamperProvider wraps everything so ANY product card in the tree
-           * can call: const { addItem } = useHamperContext()
-           */}
-          <HamperProvider>
-            <Navbar />
+        <GoogleAuthWrapper>
+          <AuthProvider>
+            {/*
+             * HamperProvider wraps everything so ANY product card in the tree
+             * can call: const { addItem } = useHamperContext()
+             */}
+            <HamperProvider>
+              <Navbar />
 
-            <main className="flex-1">
-              {children}
-            </main>
+              <main className="flex-1">
+                {children}
+              </main>
 
-            <Footer />
+              <Footer />
 
-            {/* Floating overlays */}
-            <GamificationCard />
-            <FloatingChat />
-          </HamperProvider>
-        </AuthProvider>
+              {/* Floating overlays */}
+              <GamificationCard />
+              <FloatingChat />
+            </HamperProvider>
+          </AuthProvider>
+        </GoogleAuthWrapper>
 
       </body>
     </html>

@@ -7,22 +7,9 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
+import api from "@/lib/axios";
+
 const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
-const stripApiSuffix = (value: string) => value.replace(/\/api\/?$/, "");
-
-const getApiBase = () => {
-  const configured = process.env.NEXT_PUBLIC_API_URL;
-  if (configured) return `${stripApiSuffix(configured)}/api`;
-
-  if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
-    if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return `${protocol}//${hostname}:5000/api`;
-    }
-  }
-
-  return "http://localhost:5000/api";
-};
 
 const getGiftBaseUrl = () => {
   const configured =
@@ -71,12 +58,8 @@ export default function GiftMessageBox({ onGiftSaved }: Props) {
 
     setStatus("saving");
     try {
-      const res  = await fetch(`${getApiBase()}/gift`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ type: giftType, content: value }),
-      });
-      const data = await res.json();
+      const res = await api.post("/gift", { type: giftType, content: value });
+      const data = res.data;
       if (!data.success) throw new Error(data.message);
 
       setSavedGiftId(data.giftId);

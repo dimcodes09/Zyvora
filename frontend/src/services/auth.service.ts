@@ -85,3 +85,17 @@ export const getMe = async (): Promise<User> => {
   const { data } = await api.get<ApiResponse<User>>("/auth/me");
   return data.data;
 };
+
+// ✅ GOOGLE LOGIN — sends Google credential token, gets back app JWT
+export const googleLogin = async (googleToken: string): Promise<AuthResponse> => {
+  const { data } = await api.post<
+    ApiResponse<{ token: string; user: RawAuthUser }>
+  >("/auth/google", { token: googleToken });
+
+  setAuthToken(data.data.token);
+
+  return {
+    token: data.data.token,
+    user: normalizeUser(data.data.user),
+  };
+};

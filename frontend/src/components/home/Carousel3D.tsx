@@ -874,19 +874,16 @@ export default function Categories() {
           />
 
           {/* Subtle diamond at center-left */}
-          <polygon
-            points="36,50% 54,calc(50% - 18px) 72,50% 54,calc(50% + 18px)"
-            fill="none"
-            stroke="rgba(201,123,132,0.15)"
-            strokeWidth="1"
-          />
+          <line x1="36" y1="50%" x2="54" y2="calc(50% - 18px)" stroke="rgba(201,123,132,0.15)" strokeWidth="1" />
+          <line x1="54" y1="calc(50% - 18px)" x2="72" y2="50%" stroke="rgba(201,123,132,0.15)" strokeWidth="1" />
+          <line x1="72" y1="50%" x2="54" y2="calc(50% + 18px)" stroke="rgba(201,123,132,0.15)" strokeWidth="1" />
+          <line x1="54" y1="calc(50% + 18px)" x2="36" y2="50%" stroke="rgba(201,123,132,0.15)" strokeWidth="1" />
+          
           {/* Subtle diamond at center-right */}
-          <polygon
-            points="calc(100% - 36px),50% calc(100% - 18px),calc(50% - 18px) 100%,50% calc(100% - 18px),calc(50% + 18px)"
-            fill="none"
-            stroke="rgba(196,168,130,0.15)"
-            strokeWidth="1"
-          />
+          <line x1="calc(100% - 36px)" y1="50%" x2="calc(100% - 18px)" y2="calc(50% - 18px)" stroke="rgba(196,168,130,0.15)" strokeWidth="1" />
+          <line x1="calc(100% - 18px)" y1="calc(50% - 18px)" x2="100%" y2="50%" stroke="rgba(196,168,130,0.15)" strokeWidth="1" />
+          <line x1="100%" y1="50%" x2="calc(100% - 18px)" y2="calc(50% + 18px)" stroke="rgba(196,168,130,0.15)" strokeWidth="1" />
+          <line x1="calc(100% - 18px)" y1="calc(50% + 18px)" x2="calc(100% - 36px)" y2="50%" stroke="rgba(196,168,130,0.15)" strokeWidth="1" />
         </svg>
 
         {/* ── Floating sparkle dots ── */}

@@ -729,6 +729,15 @@ export default function Navbar() {
               <span className="nb-divider" style={{ height: 16 }} />
               {user ? (
                 <>
+                  {user.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="nb-link"
+                      style={{ fontSize: "0.68rem", fontWeight: 600, color: "#8A6060", letterSpacing: "0.05em", textTransform: "uppercase" }}
+                    >
+                      Admin
+                    </Link>
+                  )}
                   <span style={{ fontSize: "0.68rem", color: "#8A6060", letterSpacing: "0.03em" }}>
                     Hi, {user.name.split(" ")[0]}
                   </span>
@@ -818,6 +827,9 @@ export default function Navbar() {
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {user ? (
               <>
+                {user.role === "admin" && (
+                  <Link href="/admin" onClick={() => setMenuOpen(false)} style={{ fontSize: "0.85rem", fontWeight: 600, color: "#7B1728" }}>Admin Panel</Link>
+                )}
                 <span style={{ fontSize: "0.85rem", color: "#8A6060" }}>Hi, {user.name}</span>
                 <button onClick={handleLogout} style={{ textAlign: "left", fontSize: "0.85rem", fontWeight: 600, color: "#7B1728" }}>Logout</button>
               </>

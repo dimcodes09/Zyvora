@@ -12,6 +12,7 @@ interface AuthState {
 
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  googleLogin: (googleToken: string) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
 }
@@ -69,6 +70,23 @@ export const useAuthStore = create<AuthState>((set) => ({
       await fetchCart();
     } catch (err: unknown) {
       set({ error: getErrorMessage(err, "Registration failed") });
+      throw err;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  // ✅ GOOGLE LOGIN
+  googleLogin: async (googleToken) => {
+    set({ loading: true, error: null });
+    try {
+      const { user } = await AuthService.googleLogin(googleToken);
+      set({ user });
+
+      const { fetchCart } = useCartStore.getState();
+      await fetchCart();
+    } catch (err: unknown) {
+      set({ error: getErrorMessage(err, "Google login failed") });
       throw err;
     } finally {
       set({ loading: false });

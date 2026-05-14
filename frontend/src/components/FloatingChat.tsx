@@ -10,7 +10,7 @@ const SUGGESTION_CHIPS = [
   "Birthday gift under ₹2000",
   "Anniversary surprise",
   "Wedding gift ideas",
-  "Something unique",
+  "Premium handbags",
 ] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
