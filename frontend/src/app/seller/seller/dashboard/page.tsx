@@ -3,10 +3,23 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  getDashboard, getOrders, updateOrderStatus,
-  type DashboardStats, type LowStockItem, type SellerOrder,
+  getDashboard, getOrders, updateOrderStatus, getAnalytics,
+  generateDeliveryOTP, verifyDeliveryOTP,
+  type DashboardStats, type LowStockItem, type SellerOrder, type AnalyticsData,
 } from "@/services/sellerApi";
 import { useSeller } from "@/context/SellerContext";
+import dynamic from "next/dynamic";
+
+// Dynamic import so recharts doesn't SSR (it uses browser APIs)
+const AnalyticsChart = dynamic(
+  () => import("@/components/seller/AnalyticsChart"),
+  { ssr: false, loading: () => (
+    <div className="rounded-2xl h-48 flex items-center justify-center border border-white/10"
+      style={{ background: "rgba(255,255,255,0.05)" }}>
+      <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )}
+);
 
 const STATUS_COLORS: Record<string, string> = {
   pending:   "bg-yellow-100 text-yellow-800",
@@ -39,31 +52,70 @@ function getItemName(item: SellerOrder["items"][number]) {
 
 export default function SellerDashboard() {
   const { seller, logout } = useSeller();
-  const [stats, setStats]       = useState<DashboardStats | null>(null);
-  const [orders, setOrders]     = useState<SellerOrder[]>([]);
-  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [stats, setStats]           = useState<DashboardStats | null>(null);
+  const [orders, setOrders]         = useState<SellerOrder[]>([]);
+  const [lowStock, setLowStock]     = useState<LowStockItem[]>([]);
+  const [analytics, setAnalytics]   = useState<AnalyticsData | null>(null);
+  const [loading, setLoading]       = useState(true);
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+
+  // OTP state: keyed by orderId
+  const [otpState, setOtpState] = useState<Record<string, {
+    input: string; busy: boolean; msg: string; error: string;
+  }>>({});
+
+  const getOtp = (id: string) =>
+    otpState[id] ?? { input: "", busy: false, msg: "", error: "" };
+
+  const patchOtp = (id: string, patch: Partial<{ input: string; busy: boolean; msg: string; error: string }>) =>
+    setOtpState((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { input: "", busy: false, msg: "", error: "" }), ...patch } }));
+
+  const handleGenerateOTP = async (orderId: string) => {
+    patchOtp(orderId, { busy: true, msg: "", error: "" });
+    try {
+      const res = await generateDeliveryOTP(orderId);
+      patchOtp(orderId, { busy: false, msg: res.message });
+    } catch (e: unknown) {
+      patchOtp(orderId, { busy: false, error: e instanceof Error ? e.message : "Failed to generate OTP" });
+    }
+  };
+
+  const handleVerifyOTP = async (orderId: string) => {
+    const otp = getOtp(orderId).input.trim();
+    if (!otp) return;
+    patchOtp(orderId, { busy: true, msg: "", error: "" });
+    try {
+      const res = await verifyDeliveryOTP(orderId, otp);
+      patchOtp(orderId, { busy: false, msg: res.message, input: "" });
+      setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status: "delivered" } : o));
+    } catch (e: unknown) {
+      patchOtp(orderId, { busy: false, error: e instanceof Error ? e.message : "Incorrect OTP" });
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
-      const [dashRes, ordersRes] = await Promise.all([getDashboard(), getOrders(undefined, "today")]);
+      const [dashRes, ordersRes, analyticsRes] = await Promise.all([
+        getDashboard(),
+        getOrders(undefined, "today"),
+        getAnalytics(),
+      ]);
       setStats(dashRes.stats);
       setLowStock(dashRes.lowStock || []);
       setOrders(ordersRes.orders || []);
+      setAnalytics(analyticsRes.data ?? null);
     } catch {
       setStats(null);
       setLowStock([]);
       setOrders([]);
+      setAnalytics(null);
+    } finally {
+      setLoading(false);
     }
-    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      void loadData();
-    }, 0);
-
+    const timeout = window.setTimeout(() => { void loadData(); }, 0);
     return () => window.clearTimeout(timeout);
   }, [loadData]);
 
@@ -150,6 +202,25 @@ export default function SellerDashboard() {
           </Link>
         </div>
 
+        {/* ── Analytics Chart ── */}
+        {analytics ? (
+          <AnalyticsChart
+            data={analytics.graphData}
+            totalRevenue={analytics.totalRevenue}
+            totalCommission={analytics.totalCommission}
+            sellerEarnings={analytics.sellerEarnings}
+            totalUsers={analytics.totalUsers}
+          />
+        ) : (
+          <div
+            className="rounded-2xl p-6 border border-white/10 text-center"
+            style={{ background: "rgba(255,255,255,0.04)" }}
+          >
+            <p className="text-rose-300/50 text-sm">📊 Analytics unavailable</p>
+            <p className="text-rose-400/30 text-xs mt-1">Place orders to see revenue data</p>
+          </div>
+        )}
+
         {/* ── Low Stock Alert ── */}
         {lowStock.length > 0 && (
           <div className="rounded-2xl p-4 border border-red-800/40" style={{ background: "rgba(127,29,29,0.25)" }}>
@@ -208,6 +279,51 @@ export default function SellerDashboard() {
                         {updatingOrder === order._id ? "Updating…" : next.label}
                       </button>
                     )}
+
+                    {/* ── Delivery OTP (packed orders only) ── */}
+                    {order.status === "packed" && (() => {
+                      const s = getOtp(order._id);
+                      return (
+                        <div className="mt-3 rounded-xl p-3 border border-emerald-800/40 space-y-2"
+                          style={{ background: "rgba(6,78,59,0.2)" }}>
+                          <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wide">🔐 Delivery OTP</p>
+
+                          <button
+                            onClick={() => handleGenerateOTP(order._id)}
+                            disabled={s.busy}
+                            className="w-full py-2 rounded-lg text-xs font-medium border border-emerald-700/50 text-emerald-200 hover:bg-emerald-900/30 transition-all disabled:opacity-50">
+                            {s.busy ? "Generating…" : "Generate OTP"}
+                          </button>
+
+                          {s.msg && !s.error && (
+                            <p className="text-xs text-emerald-400 text-center">{s.msg}</p>
+                          )}
+
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={s.input}
+                              onChange={(e) => patchOtp(order._id, { input: e.target.value })}
+                              placeholder="Enter 6-digit OTP"
+                              className="flex-1 rounded-lg px-3 py-2 text-sm bg-black/30 border border-emerald-800/50 text-emerald-100 placeholder-emerald-700 outline-none focus:border-emerald-500"
+                            />
+                            <button
+                              onClick={() => handleVerifyOTP(order._id)}
+                              disabled={s.busy || s.input.length !== 6}
+                              className="px-3 rounded-lg text-xs font-semibold text-white transition-all disabled:opacity-40"
+                              style={{ background: "linear-gradient(135deg,#047857,#059669)" }}>
+                              Verify
+                            </button>
+                          </div>
+
+                          {s.error && (
+                            <p className="text-xs text-red-400 text-center">{s.error}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

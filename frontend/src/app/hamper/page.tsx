@@ -30,7 +30,7 @@ const PLACEHOLDER =
   "%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' " +
   "font-size='40' font-family='serif'%3E%F0%9F%8E%81%3C/text%3E%3C/svg%3E";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 

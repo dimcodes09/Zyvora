@@ -33,6 +33,9 @@ const allowedOrigins = new Set(
     config.clientUrl,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    // Production Vercel deployments
+    "https://zyvoras.vercel.app",
+    "https://www.zyvoras.vercel.app",
     "https://zyvora-livid.vercel.app",
     "https://www.zyvora-livid.vercel.app",
     process.env.PUBLIC_CLIENT_URL,
@@ -45,7 +48,10 @@ const isLocalDevOrigin = (origin: string) =>
   /^https?:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
   /^https?:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
   /^https?:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin) ||
-  /^https:\/\/[a-z0-9-]+\.ngrok-free\.dev$/.test(origin);
+  /^https:\/\/[a-z0-9-]+\.ngrok-free\.dev$/.test(origin) ||
+  // Allow all Vercel preview deployments automatically
+  /^https:\/\/[a-z0-9-]+-[a-z0-9]+\.vercel\.app$/.test(origin) ||
+  /^https:\/\/[a-z0-9][a-z0-9-]*\.vercel\.app$/.test(origin);
 
 // ─── Security Middleware ───────────────────────────────────────
 app.use(helmet());

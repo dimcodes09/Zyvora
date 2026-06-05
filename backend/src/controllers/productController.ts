@@ -55,6 +55,15 @@ export const getProductById = async (
       return next(new AppError('Invalid product ID', 400));
     }
 
+    // ─── ANALYTICS: track unique authenticated viewers ────────
+    // Fire-and-forget — never blocks or breaks the response
+    const userId = (req as any).userId || (req as any).user?.userId;
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      Product.findByIdAndUpdate(id, {
+        $addToSet: { uniqueViewers: new mongoose.Types.ObjectId(userId) },
+      }).catch(() => { /* silent — analytics must never break product fetch */ });
+    }
+
     const product = await Product.findById(id).select('-__v').lean();
 
     if (!product) return next(new AppError('Product not found', 404));
@@ -191,11 +200,11 @@ export const searchProducts = async (
 
     const products = await Product.find({
       $or: [
-        { name:     { $regex: q, $options: "i" } },
-        { category: { $regex: q, $options: "i" } },
+        { name:     { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } },
       ],
     })
-      .select("-__v")
+      .select('-__v')
       .limit(3)
       .lean();
 

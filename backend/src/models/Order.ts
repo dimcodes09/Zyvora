@@ -35,9 +35,25 @@ export interface IOrder extends Document {
   status: OrderStatus;
   paymentMethod: PaymentMethod;
 
+  // ─── ANALYTICS: commission split ─────────────────────
+  commission?: number;    // 10% platform fee
+  sellerRevenue?: number; // 90% seller earnings
+
+  // ─── DELIVERY OTP ──────────────────────────────────────
+  otp?: string;           // 6-digit delivery OTP
+  isVerified?: boolean;   // true once OTP confirmed
+
   deliveryType: DeliveryType;
   deliveryAddress?: string;
   notes?: string;
+
+  // ─── BUYER CONTACT ────────────────────────────────────
+  buyerName?: string;
+  buyerPhone?: string;
+  buyerAddress?: string;
+  buyerCity?: string;
+  buyerState?: string;
+  buyerPincode?: string;
 
   // Stripe
   stripeSessionId?: string;
@@ -109,6 +125,30 @@ const OrderSchema = new Schema<IOrder>(
       min: [0, "Total price must be positive"],
     },
 
+    // ─── ANALYTICS: commission split ──────────────────────
+    commission: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    sellerRevenue: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    // ─── DELIVERY OTP ──────────────────────────────────────
+    otp: {
+      type: String,
+      default: null,
+    },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
     status: {
       type: String,
       enum: [
@@ -145,6 +185,14 @@ const OrderSchema = new Schema<IOrder>(
       type: String,
       trim: true,
     },
+
+    // ─── BUYER CONTACT ────────────────────────────────────
+    buyerName: { type: String, trim: true },
+    buyerPhone: { type: String, trim: true },
+    buyerAddress: { type: String, trim: true },
+    buyerCity: { type: String, trim: true },
+    buyerState: { type: String, trim: true },
+    buyerPincode: { type: String, trim: true },
 
     // ─── PAYMENTS (KEEP YOUR EXISTING) ─────────────
 

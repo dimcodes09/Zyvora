@@ -114,7 +114,7 @@ export default function AISearch() {
     setProducts(null);
     setHasSearched(true);
     try {
-      const res = await fetch("http://localhost:5000/api/ai/search", {
+      const res = await fetch(`${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "")}/api/ai/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
@@ -152,7 +152,7 @@ export default function AISearch() {
     if (!q) { setSuggestions([]); setShowSuggestions(false); return; }
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/ai/suggestions?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "")}/api/ai/suggestions?q=${encodeURIComponent(q)}`);
         if (!res.ok) throw new Error();
         const data: string[] = await res.json();
         setSuggestions(data); setShowSuggestions(data.length > 0);

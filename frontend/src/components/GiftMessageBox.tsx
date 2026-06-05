@@ -12,23 +12,34 @@ import api from "@/lib/axios";
 const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
 const getGiftBaseUrl = () => {
+  // In production (Vercel), NEXT_PUBLIC_BASE_URL is set to https://zyvoras.vercel.app
+  // This ensures QR codes point to the live URL, not a local IP
   const configured =
     process.env.NEXT_PUBLIC_GIFT_BASE_URL ||
     process.env.NEXT_PUBLIC_BASE_URL;
   if (configured) return stripTrailingSlash(configured);
 
   if (typeof window !== "undefined") {
-    const localIp = process.env.NEXT_PUBLIC_LOCAL_IP;
-    const isLocalhost =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
+    const origin = window.location.origin;
+    const isLocal =
+      origin.includes("localhost") || origin.includes("127.0.0.1");
 
-    if (localIp && isLocalhost) {
-      const port = process.env.NEXT_PUBLIC_PORT || window.location.port || "3000";
-      return `${window.location.protocol}//${localIp}${port ? `:${port}` : ""}`;
+    if (isLocal) {
+      // Phone can't reach localhost — use the LAN IP set in .env.local
+      // e.g.  NEXT_PUBLIC_LAN_IP=192.168.1.5
+      const lanIp = process.env.NEXT_PUBLIC_LAN_IP;
+      if (lanIp) {
+        const port = window.location.port || "3000";
+        return `http://${lanIp}:${port}`;
+      }
+      // Last-resort: tell the dev what to do
+      console.warn(
+        "[GiftMessageBox] QR code uses localhost — phone scans will fail.\n" +
+        "Add NEXT_PUBLIC_LAN_IP=<your-local-IP> to frontend/.env.local"
+      );
     }
 
-    return window.location.origin;
+    return origin;
   }
 
   return "";

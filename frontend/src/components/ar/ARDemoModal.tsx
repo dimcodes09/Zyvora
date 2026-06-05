@@ -25,16 +25,25 @@ interface DragOrigin {
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// AR can use HTTPS/ngrok while gift QR can use a same-network LAN URL.
-const baseUrl = process.env.NEXT_PUBLIC_AR_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL;
+// Resolve at call-time so window.location.origin is available on the client.
+// Set NEXT_PUBLIC_BASE_URL=https://zyvoras.vercel.app in the Vercel dashboard.
+const getBaseUrl = (): string => {
+  const configured =
+    process.env.NEXT_PUBLIC_AR_BASE_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL;
+  if (configured) return configured.replace(/\/+$/, "");
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+};
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function buildArUrl(productId: string) {
-  if (!baseUrl) {
-    console.error("BASE URL missing");
+  const base = getBaseUrl();
+  if (!base) {
+    console.error("BASE URL missing — set NEXT_PUBLIC_BASE_URL in Vercel dashboard");
     return "";
   }
-  return `${baseUrl}/ar?productId=${productId}`;
+  return `${base}/ar?productId=${productId}`;
 }
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
@@ -438,7 +447,7 @@ export default function ARDemoModal({ isOpen, onClose, product }: ARDemoModalPro
                   display: "inline-flex",
                 }}>
                   <QRCodeSVG
-                    value={arUrl}
+                    value={arUrl || "https://zyvoras.vercel.app"}
                     size={184}
                     level="M"
                     fgColor="#2D1B1E"
@@ -456,7 +465,7 @@ export default function ARDemoModal({ isOpen, onClose, product }: ARDemoModalPro
                   color: "#9C7A7E", maxWidth: "360px",
                   textAlign: "center", wordBreak: "break-all",
                 }}>
-                  {arUrl}
+                  {arUrl || "https://zyvoras.vercel.app"}
                 </div>
 
                 {/* steps */}
@@ -466,10 +475,10 @@ export default function ARDemoModal({ isOpen, onClose, product }: ARDemoModalPro
                   alignSelf: "stretch", maxWidth: "380px",
                 }}>
                   {[
-                    "Make sure your phone is on the same Wi-Fi network.",
                     "Open your phone's camera and point it at the QR code.",
-                    "Tap the link that appears to open the AR preview.",
+                    "Tap the link that appears — no Wi-Fi pairing needed.",
                     "Allow camera access and see the product in your space.",
+                    "Works on any network, anywhere in the world.",
                   ].map((step, i) => (
                     <li key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                       <span style={{
@@ -494,7 +503,11 @@ export default function ARDemoModal({ isOpen, onClose, product }: ARDemoModalPro
                   margin: 0, fontSize: "11px", color: "#B89BA0",
                   textAlign: "center", maxWidth: "340px", lineHeight: "1.6",
                 }}>
-                  💡 To change the local IP, set <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>NEXT_PUBLIC_LOCAL_IP</code> in your <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>.env.local</code>
+                  💡 The QR code links to{" "}
+                  <code style={{ background: "rgba(201,123,132,0.08)", padding: "1px 5px", borderRadius: "4px" }}>
+                    NEXT_PUBLIC_BASE_URL
+                  </code>
+                  . Make sure it is set to your live Vercel URL in the Vercel dashboard.
                 </p>
               </div>
             )}

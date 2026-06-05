@@ -390,6 +390,33 @@ export default function Navbar() {
   const cart = useCartStore((s) => s.cart);
   const { user, logout, hydrated } = useAuthStore();
 
+  // ── Seller session (read from localStorage — mirrors SellerContext) ──────────
+  const [sellerInfo, setSellerInfo] = useState<{ name: string; shopName: string } | null>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const raw = localStorage.getItem("sellerInfo");
+        const token = localStorage.getItem("sellerToken");
+        setSellerInfo(raw && token ? (JSON.parse(raw) as { name: string; shopName: string }) : null);
+      } catch { setSellerInfo(null); }
+    };
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener("sellerAuthChanged", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("sellerAuthChanged", sync);
+    };
+  }, []);
+
+  const handleSellerLogout = () => {
+    localStorage.removeItem("sellerToken");
+    localStorage.removeItem("sellerInfo");
+    window.dispatchEvent(new Event("sellerAuthChanged"));
+    setSellerInfo(null);
+  };
+
   const count = cart?.items?.reduce((s, i) => s + i.quantity, 0) ?? 0;
   const reelsActive = pathname === "/reels";
 
@@ -436,7 +463,7 @@ export default function Navbar() {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/ai/suggestions?q=${encodeURIComponent(q)}`
+          `${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "")}/api/ai/suggestions?q=${encodeURIComponent(q)}`
         );
         if (!res.ok) throw new Error();
         const data: string[] = await res.json();
@@ -477,7 +504,7 @@ export default function Navbar() {
     setSearchLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/ai/search", {
+      const res = await fetch(`${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "")}/api/ai/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: trimmed }),
@@ -727,6 +754,37 @@ export default function Navbar() {
             {/* Desktop only bits */}
             <div className="nb-desktop-nav" style={{ display: "flex", alignItems: "center", gap: "clamp(0.8rem, 2vw, 2rem)" }}>
               <span className="nb-divider" style={{ height: 16 }} />
+
+              {/* ── Seller session pill ── */}
+              {sellerInfo && (
+                <>
+                  <Link
+                    href="/seller/seller/dashboard"
+                    className="nb-link"
+                    style={{
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      color: "#9f1239",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                    }}
+                  >
+                    🏪 {sellerInfo.shopName ?? sellerInfo.name}
+                  </Link>
+                  <span className="nb-divider" />
+                  <button
+                    onClick={handleSellerLogout}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.68rem", fontWeight: 600, color: "#8A6060", letterSpacing: "0.05em", padding: 0 }}
+                  >
+                    Seller Logout
+                  </button>
+                  <span className="nb-divider" />
+                </>
+              )}
+
               {user ? (
                 <>
                   {user.role === "admin" && (

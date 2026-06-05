@@ -9,6 +9,7 @@ import {
   verifyRazorpayPayment,
 } from "@/services/payment.service";
 import { createCashOnDeliveryOrder } from "@/services/order.service";
+import type { BuyerInfo } from "@/services/order.service";
 import { resolveProductImage } from "@/lib/productImage";
 
 declare global {
@@ -399,9 +400,68 @@ const STYLES = `
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
+
+  /* ── ADDRESS FORM ── */
+  .co-form-section {
+    margin-top: 2.5rem;
+  }
+  .co-form-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #2C1810;
+    margin-bottom: 1.4rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid rgba(180,120,120,0.1);
+  }
+  .co-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .co-form-full { grid-column: 1 / -1; }
+  .co-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .co-label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #8A6060;
+  }
+  .co-input {
+    padding: 0.72rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(180,120,120,0.22);
+    background: #fff;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.85rem;
+    color: #2C1810;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .co-input:focus {
+    border-color: rgba(123,23,40,0.4);
+    box-shadow: 0 0 0 3px rgba(123,23,40,0.07);
+  }
+  .co-input.is-err { border-color: rgba(192,57,43,0.45); }
+  .co-field-err {
+    font-size: 0.65rem;
+    color: #C0392B;
+    margin-top: 0.1rem;
+  }
+  @media (max-width: 600px) {
+    .co-form-grid { grid-template-columns: 1fr; }
+    .co-form-full { grid-column: 1; }
+  }
 `;
 
 // ── Inner component — must be inside Suspense because it uses useSearchParams ──
+
+const EMPTY_BUYER: BuyerInfo = { name: "", phone: "", address: "", city: "", state: "", pincode: "" };
 
 function CheckoutInner() {
   const router = useRouter();
@@ -421,6 +481,29 @@ function CheckoutInner() {
   const [success, setSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
   const checkoutSource = isHamper ? "hamper" : "cart";
+
+  // ── Buyer form state ──
+  const [buyer, setBuyer] = useState<BuyerInfo>(EMPTY_BUYER);
+  const [formErr, setFormErr] = useState<Partial<BuyerInfo>>({});
+
+  const updateBuyer = (field: keyof BuyerInfo, val: string) => {
+    setBuyer(prev => ({ ...prev, [field]: val }));
+    setFormErr(prev => ({ ...prev, [field]: "" }));
+  };
+
+  const validateBuyer = (): boolean => {
+    const errs: Partial<BuyerInfo> = {};
+    if (!buyer.name.trim())    errs.name    = "Required";
+    if (!buyer.phone.trim())   errs.phone   = "Required";
+    else if (!/^\d{10}$/.test(buyer.phone.trim())) errs.phone = "Must be 10 digits";
+    if (!buyer.address.trim()) errs.address = "Required";
+    if (!buyer.city.trim())    errs.city    = "Required";
+    if (!buyer.state.trim())   errs.state   = "Required";
+    if (!buyer.pincode.trim()) errs.pincode = "Required";
+    else if (!/^\d{6}$/.test(buyer.pincode.trim())) errs.pincode = "Must be 6 digits";
+    setFormErr(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   useEffect(() => {
     if (!isHamper) fetchCart();
@@ -449,7 +532,7 @@ function CheckoutInner() {
     const loaded = await loadRazorpayScript();
     if (!loaded) { setError("Payment gateway failed to load."); setLoading(false); return; }
     try {
-      const orderData = await createRazorpayOrder(checkoutSource);
+      const orderData = await createRazorpayOrder(checkoutSource, buyer);
       const options = {
         key:      process.env.NEXT_PUBLIC_RAZORPAY_KEY,
         amount:   orderData.amount,
@@ -481,7 +564,7 @@ function CheckoutInner() {
     setLoading(true);
     setError(null);
     try {
-      await createCashOnDeliveryOrder(checkoutSource);
+      await createCashOnDeliveryOrder(checkoutSource, buyer);
       if (isHamper) hamper.clearHamper();
       else resetCart();
       setSuccess(true);
@@ -494,11 +577,11 @@ function CheckoutInner() {
   };
 
   const handlePlaceOrder = () => {
+    if (!validateBuyer()) return;
     if (paymentMethod === "cod") {
       void handleCashOnDelivery();
       return;
     }
-
     void handlePayment();
   };
 
@@ -574,6 +657,62 @@ function CheckoutInner() {
                 ))}
               </div>
             )}
+
+            {/* ── ADDRESS FORM ── */}
+            <div className="co-form-section">
+              <p className="co-form-title">Delivery Details</p>
+              <div className="co-form-grid">
+
+                <div className="co-field co-form-full">
+                  <label className="co-label" htmlFor="buyer-name">Full Name</label>
+                  <input id="buyer-name" className={`co-input${formErr.name ? " is-err" : ""}`}
+                    placeholder="e.g. Priya Sharma" value={buyer.name}
+                    onChange={e => updateBuyer("name", e.target.value)} />
+                  {formErr.name && <span className="co-field-err">{formErr.name}</span>}
+                </div>
+
+                <div className="co-field co-form-full">
+                  <label className="co-label" htmlFor="buyer-phone">Phone Number</label>
+                  <input id="buyer-phone" className={`co-input${formErr.phone ? " is-err" : ""}`}
+                    placeholder="10-digit mobile number" value={buyer.phone} inputMode="numeric"
+                    onChange={e => updateBuyer("phone", e.target.value)} />
+                  {formErr.phone && <span className="co-field-err">{formErr.phone}</span>}
+                </div>
+
+                <div className="co-field co-form-full">
+                  <label className="co-label" htmlFor="buyer-address">Address Line</label>
+                  <input id="buyer-address" className={`co-input${formErr.address ? " is-err" : ""}`}
+                    placeholder="House / Flat / Street" value={buyer.address}
+                    onChange={e => updateBuyer("address", e.target.value)} />
+                  {formErr.address && <span className="co-field-err">{formErr.address}</span>}
+                </div>
+
+                <div className="co-field">
+                  <label className="co-label" htmlFor="buyer-city">City</label>
+                  <input id="buyer-city" className={`co-input${formErr.city ? " is-err" : ""}`}
+                    placeholder="Mumbai" value={buyer.city}
+                    onChange={e => updateBuyer("city", e.target.value)} />
+                  {formErr.city && <span className="co-field-err">{formErr.city}</span>}
+                </div>
+
+                <div className="co-field">
+                  <label className="co-label" htmlFor="buyer-state">State</label>
+                  <input id="buyer-state" className={`co-input${formErr.state ? " is-err" : ""}`}
+                    placeholder="Maharashtra" value={buyer.state}
+                    onChange={e => updateBuyer("state", e.target.value)} />
+                  {formErr.state && <span className="co-field-err">{formErr.state}</span>}
+                </div>
+
+                <div className="co-field">
+                  <label className="co-label" htmlFor="buyer-pincode">Pincode</label>
+                  <input id="buyer-pincode" className={`co-input${formErr.pincode ? " is-err" : ""}`}
+                    placeholder="400001" value={buyer.pincode} inputMode="numeric"
+                    onChange={e => updateBuyer("pincode", e.target.value)} />
+                  {formErr.pincode && <span className="co-field-err">{formErr.pincode}</span>}
+                </div>
+
+              </div>
+            </div>
           </div>
 
           {/* ── RIGHT: Summary card ── */}

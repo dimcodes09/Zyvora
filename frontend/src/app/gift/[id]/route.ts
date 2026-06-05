@@ -14,11 +14,11 @@ type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
 };
 
-// Server-side route — use BACKEND_URL (localhost) so we don't timeout on LAN IP
+// Server-side route — BACKEND_URL must point to the Render backend (https://zyvora.onrender.com/api)
 const getGiftApiBase = () => {
   const configured =
     process.env.BACKEND_URL ||
-    process.env.API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
     "http://localhost:5000/api";
 
   return `${configured.replace(/\/api\/?$/, "")}/api`;
@@ -81,7 +81,7 @@ const renderPage = (gift: GiftData | null) => {
     `
     : `
       <p class="error">Could not load gift</p>
-      <p class="hint">Please check that your phone is on the same Wi-Fi and scan again.</p>
+      <p class="hint">This link may have expired or the gift ID may be incorrect. Please try again or contact the sender.</p>
     `;
 
   return `<!doctype html>

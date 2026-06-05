@@ -226,3 +226,38 @@ export const updateOrderStatus = (orderId: string, status: string) =>
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+export interface GraphPoint {
+  date: string;
+  seller: number;
+  platform: number;
+}
+
+export interface AnalyticsData {
+  totalRevenue: number;
+  totalCommission: number;
+  sellerEarnings: number;
+  totalUsers: number;
+  graphData: GraphPoint[];
+}
+
+export const getAnalytics = () =>
+  sellerFetch<{ success: boolean; data: AnalyticsData }>("/analytics");
+
+// ─── Delivery OTP ─────────────────────────────────────────────────────────────
+
+/** Ask backend to generate a delivery OTP (printed to server terminal) */
+export const generateDeliveryOTP = (orderId: string) =>
+  sellerFetch<{ success: boolean; message: string }>(
+    `/orders/${orderId}/generate-otp`,
+    { method: "POST" }
+  );
+
+/** Submit OTP entered by customer; marks order as delivered on success */
+export const verifyDeliveryOTP = (orderId: string, otp: string) =>
+  sellerFetch<{ success: boolean; message: string }>(
+    `/orders/${orderId}/verify-otp`,
+    { method: "POST", body: JSON.stringify({ otp }) }
+  );

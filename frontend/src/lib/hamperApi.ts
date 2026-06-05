@@ -46,7 +46,11 @@ export async function fetchHamper(): Promise<HamperResponse | null> {
     const res = await api.get("/hamper");
     return res.data;
   } catch (err: any) {
-    throw new Error(err?.message || `GET /api/hamper failed`);
+    // Non-critical: network error, backend cold start, or auth issue.
+    // Return null so the hook silently starts with an empty hamper.
+    const msg = err?.message || err?.error || `GET /api/hamper failed`;
+    console.warn(`[hamperApi] fetchHamper skipped: ${msg}`);
+    return null;
   }
 }
 
@@ -67,6 +71,8 @@ export async function saveHamper(
     const res = await api.post("/hamper", { items });
     return res.data;
   } catch (err: any) {
-    throw new Error(err?.message || `POST /api/hamper failed`);
+    // axios interceptor rejects with the response body object (not an Error)
+    const msg = err?.message || err?.error || `POST /api/hamper failed`;
+    throw new Error(msg);
   }
 }

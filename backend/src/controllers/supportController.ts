@@ -62,7 +62,7 @@ Generate a polite, professional customer support reply in 4–5 lines.`;
 
     const mailOptions = {
       from: `"Zyvora Support" <nidk0321@gmail.com>`,
-      to: "divyanshukubde8@gmail.com",
+      to: email,   // ← send to the user's email from the form
       subject: "Support Request - Zyvora",
       text: `Dear ${name},\n\n${aiResponse}\n\n${orderId ? `Reference Order ID: ${orderId}\n\n` : ''}Best regards,\nZyvora Support Team`,
     };

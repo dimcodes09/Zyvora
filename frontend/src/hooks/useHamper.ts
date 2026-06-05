@@ -25,6 +25,8 @@ export function useHamper() {
   // Use state (not just ref) so the sync effect re-runs after load finishes
   const [loaded, setLoaded]       = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Prevents a spurious POST right after the initial GET completes
+  const skipFirstSyncRef = useRef(false);
 
   // ── Load hamper on mount ─────────────────────────────────────
   useEffect(() => {
@@ -74,6 +76,13 @@ export function useHamper() {
     // Don't sync until the initial fetch has completed
     if (!loaded) return;
 
+    // Skip the very first run triggered by `loaded` flipping true —
+    // that's just the freshly-fetched server state, nothing to persist yet.
+    if (!skipFirstSyncRef.current) {
+      skipFirstSyncRef.current = true;
+      return;
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     setSyncStatus("saving");
@@ -91,8 +100,11 @@ export function useHamper() {
 
         setSyncStatus("saved");
         setTimeout(() => setSyncStatus("idle"), 1500);
-      } catch (err) {
-        console.error("[useHamper] Save failed:", err);
+      } catch (err: any) {
+        console.error(
+          "[useHamper] Save failed:",
+          err?.message ?? err
+        );
         setSyncStatus("error");
       }
     }, DEBOUNCE_MS);

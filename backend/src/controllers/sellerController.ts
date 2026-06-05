@@ -389,6 +389,74 @@ export const updateOrderStatus = async (req: SellerRequest, res: Response): Prom
   }
 };
 
+// ─── DELIVERY OTP ────────────────────────────────────────────────────────────
+
+// POST /api/seller/orders/:id/generate-otp
+export const generateDeliveryOTP = async (req: SellerRequest, res: Response): Promise<void> => {
+  try {
+    // Find by _id (seller field may not always be set on older/COD orders)
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    order.otp = otp;
+    order.isVerified = false;
+    await order.save();
+
+    // DEV: print to terminal (no SMS needed for demo)
+    console.log(`\n[DELIVERY OTP] Order #${order._id} → OTP: ${otp}\n`);
+
+    res.status(200).json({ success: true, message: "OTP generated. Check server terminal." });
+  } catch (error) {
+    console.error('[generateDeliveryOTP]', error);
+    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+  }
+};
+
+// POST /api/seller/orders/:id/verify-otp
+export const verifyDeliveryOTP = async (req: SellerRequest, res: Response): Promise<void> => {
+  try {
+    const { otp } = req.body as { otp: string };
+
+    if (!otp || otp.trim().length !== 6) {
+      res.status(400).json({ success: false, message: "Enter a valid 6-digit OTP" });
+      return;
+    }
+
+    // Find by _id only (seller field may not always be set)
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      res.status(404).json({ success: false, message: "Order not found" });
+      return;
+    }
+
+    if (!order.otp) {
+      res.status(400).json({ success: false, message: "No OTP generated for this order. Click Generate OTP first." });
+      return;
+    }
+
+    if (order.otp.trim() !== otp.trim()) {
+      res.status(400).json({ success: false, message: "Incorrect OTP. Try again." });
+      return;
+    }
+
+    order.isVerified = true;
+    order.status = "delivered";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (order as any).otp = undefined; // clear after use
+    await order.save();
+
+    res.status(200).json({ success: true, message: "✅ OTP verified! Order marked as Delivered." });
+  } catch (error) {
+    console.error('[verifyDeliveryOTP]', error);
+    res.status(500).json({ success: false, message: "Failed to verify OTP" });
+  }
+};
+
 // ─── DASHBOARD STATS ─────────────────────────────────────────────────────────
 
 // GET /api/seller/dashboard

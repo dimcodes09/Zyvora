@@ -26,6 +26,12 @@ export const createRazorpayOrder = async (
     const { userId } = req as unknown as AuthRequest;
     const source = getCheckoutSource(req.body?.source);
 
+    // ─── BUYER CONTACT ─────────────────────────────────────
+    const { name, phone, address, city, state, pincode } = req.body as {
+      name?: string; phone?: string; address?: string;
+      city?: string; state?: string; pincode?: string;
+    };
+
     const checkout = await buildCheckoutOrderData(userId, source);
 
     const order = await Order.create({
@@ -36,6 +42,13 @@ export const createRazorpayOrder = async (
       status: 'pending',
       paymentMethod: 'razorpay',
       ...(checkout.notes ? { notes: checkout.notes } : {}),
+      // ── buyer contact ──
+      ...(name    ? { buyerName: name }       : {}),
+      ...(phone   ? { buyerPhone: phone }     : {}),
+      ...(address ? { buyerAddress: address } : {}),
+      ...(city    ? { buyerCity: city }       : {}),
+      ...(state   ? { buyerState: state }     : {}),
+      ...(pincode ? { buyerPincode: pincode } : {}),
     });
 
     const razorpayOrder = await razorpay.orders.create({

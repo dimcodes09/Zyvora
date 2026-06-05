@@ -2,14 +2,12 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const getApiOrigin = () => {
-  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "http://localhost:5000";
+  // Always prefer the explicit env variable (set in Vercel dashboard / .env.local)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "");
   }
-
-  return (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(
-    /\/api\/?$/,
-    ""
-  );
+  // Fallback for local development only
+  return "http://localhost:5000";
 };
 
 const api = axios.create({

@@ -22,16 +22,35 @@ export const createOrder = async (
     const userId = (req as AuthRequest).userId;
     const source = getCheckoutSource(req.body?.source);
 
+    // ─── BUYER CONTACT ────────────────────────────────────────
+    const { name, phone, address, city, state, pincode } = req.body as {
+      name?: string; phone?: string; address?: string;
+      city?: string; state?: string; pincode?: string;
+    };
+
     const checkout = await buildCheckoutOrderData(userId, source);
+
+    // ─── ANALYTICS: commission split ─────────────────────────
+    const commission = parseFloat((checkout.totalPrice * 0.1).toFixed(2));
+    const sellerRevenue = parseFloat((checkout.totalPrice * 0.9).toFixed(2));
 
     const order = await Order.create({
       user: userId,
       ...(checkout.seller ? { seller: checkout.seller } : {}),
       items: checkout.items,
       totalPrice: checkout.totalPrice,
+      commission,
+      sellerRevenue,
       status: 'pending',
       paymentMethod: 'cod',
       ...(checkout.notes ? { notes: checkout.notes } : {}),
+      // ── buyer contact ──
+      ...(name    ? { buyerName: name }       : {}),
+      ...(phone   ? { buyerPhone: phone }     : {}),
+      ...(address ? { buyerAddress: address } : {}),
+      ...(city    ? { buyerCity: city }       : {}),
+      ...(state   ? { buyerState: state }     : {}),
+      ...(pincode ? { buyerPincode: pincode } : {}),
     });
 
     // ─── ✅ GAMIFICATION ADD (SAFE) ─────────────────────────

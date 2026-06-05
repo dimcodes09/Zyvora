@@ -70,6 +70,7 @@ export const createCheckoutSession = async (
       return;
     }
 
+
     const totalPrice = parseFloat(
       orderItems
         .reduce((sum, item) => sum + item.priceAtPurchase * item.quantity, 0)
@@ -78,16 +79,21 @@ export const createCheckoutSession = async (
 
     // ── 4. Persist the order BEFORE creating the Stripe session ─
     //    so orderId is available in session metadata
+
+    // ─── ANALYTICS: commission split ─────────────────────────
+    const commission = parseFloat((totalPrice * 0.1).toFixed(2));
+    const sellerRevenue = parseFloat((totalPrice * 0.9).toFixed(2));
+
     const order = await Order.create({
       user: userId,
       seller: sellerId,
       items: orderItems,
       totalPrice,
+      commission,
+      sellerRevenue,
       status: 'pending',
       paymentMethod: 'stripe',
     });
-
-    // ── 5. Build Stripe line_items from DB prices ──────────────
 const lineItems = cart.items.map((item) => ({
   price_data: {
     currency: 'usd',

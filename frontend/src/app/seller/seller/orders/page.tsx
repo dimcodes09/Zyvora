@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getOrders, updateOrderStatus, type SellerOrder } from "@/services/sellerApi";
+import {
+  getOrders, updateOrderStatus,
+  generateDeliveryOTP, verifyDeliveryOTP,
+  type SellerOrder,
+} from "@/services/sellerApi";
 
 const FILTERS = [
   { label: "All", value: "" }, { label: "New", value: "pending" },
@@ -47,6 +51,16 @@ export default function SellerOrdersPage() {
   const [loading, setLoading]   = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // OTP state: keyed by orderId → { input, busy, msg, error }
+  const [otpState, setOtpState] = useState<Record<string, {
+    input: string; busy: boolean; msg: string; error: string;
+  }>>({});
+
+  const getOtp = (id: string) =>
+    otpState[id] ?? { input: "", busy: false, msg: "", error: "" };
+
+  const setOtp = (id: string, patch: Partial<{ input: string; busy: boolean; msg: string; error: string }>) =>
+    setOtpState((prev) => ({ ...prev, [id]: { ...getOtp(id), ...patch } }));
 
   const load = useCallback(async (status?: string) => {
     setLoading(true);
@@ -75,6 +89,30 @@ export default function SellerOrdersPage() {
   const handleCancel = async (orderId: string) => {
     if (!confirm("Cancel this order?")) return;
     await handleUpdate(orderId, "cancelled");
+  };
+
+  const handleGenerateOTP = async (orderId: string) => {
+    setOtp(orderId, { busy: true, msg: "", error: "" });
+    try {
+      const res = await generateDeliveryOTP(orderId);
+      setOtp(orderId, { busy: false, msg: res.message });
+    } catch (e: unknown) {
+      setOtp(orderId, { busy: false, error: e instanceof Error ? e.message : "Failed" });
+    }
+  };
+
+  const handleVerifyOTP = async (orderId: string) => {
+    const otp = getOtp(orderId).input.trim();
+    if (!otp) return;
+    setOtp(orderId, { busy: true, msg: "", error: "" });
+    try {
+      const res = await verifyDeliveryOTP(orderId, otp);
+      setOtp(orderId, { busy: false, msg: res.message, input: "" });
+      // Mark delivered locally
+      setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status: "delivered" } : o));
+    } catch (e: unknown) {
+      setOtp(orderId, { busy: false, error: e instanceof Error ? e.message : "Incorrect OTP" });
+    }
   };
 
   const counts = orders.reduce<Record<string, number>>((acc, o) => {
@@ -225,6 +263,51 @@ export default function SellerOrdersPage() {
                           )}
                         </div>
                       )}
+
+                      {/* ── Delivery OTP block (only for packed orders) ── */}
+                      {order.status === "packed" && (() => {
+                        const s = getOtp(order._id);
+                        return (
+                          <div className="rounded-xl p-3 border border-emerald-800/40 space-y-2"
+                            style={{ background: "rgba(6,78,59,0.18)" }}>
+                            <p className="text-xs font-semibold text-emerald-300 uppercase tracking-wide">🔐 Delivery OTP</p>
+
+                            <button
+                              onClick={() => handleGenerateOTP(order._id)}
+                              disabled={s.busy}
+                              className="w-full py-2 rounded-lg text-sm font-medium border border-emerald-700/50 text-emerald-200 hover:bg-emerald-900/30 transition-all disabled:opacity-50">
+                              {s.busy ? "Generating…" : "Generate OTP"}
+                            </button>
+
+                            {s.msg && !s.error && (
+                              <p className="text-xs text-emerald-400 text-center">{s.msg}</p>
+                            )}
+
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                value={s.input}
+                                onChange={(e) => setOtp(order._id, { input: e.target.value })}
+                                placeholder="Enter 6-digit OTP"
+                                className="flex-1 rounded-lg px-3 py-2 text-sm bg-black/30 border border-emerald-800/50 text-emerald-100 placeholder-emerald-700 outline-none focus:border-emerald-500"
+                              />
+                              <button
+                                onClick={() => handleVerifyOTP(order._id)}
+                                disabled={s.busy || s.input.length !== 6}
+                                className="px-4 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40"
+                                style={{ background: "linear-gradient(135deg,#047857,#059669)" }}>
+                                Verify
+                              </button>
+                            </div>
+
+                            {s.error && (
+                              <p className="text-xs text-red-400 text-center">{s.error}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

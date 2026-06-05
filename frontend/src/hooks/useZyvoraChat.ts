@@ -44,7 +44,7 @@ export function useZyvoraChat() {
 
     try {
       // 2. Call backend AI search (Groq parses intent → MongoDB products)
-      const res = await fetch(`http://localhost:5000/api/ai/search`, {
+      const res = await fetch(`${BACKEND_ORIGIN}/api/ai/search`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),

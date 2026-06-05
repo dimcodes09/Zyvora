@@ -1,3 +1,6 @@
+import dns from "node:dns";
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -12,6 +15,21 @@ const start = async (): Promise<void> => {
     console.log(
       `🚀 Server running in ${config.env} mode on port ${config.port}`
     );
+  });
+
+  // ── Port-in-use guard ───────────────────────────────────────
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `\n❌ Port ${config.port} is already in use.\n` +
+        `   Run this to free it:\n` +
+        `   netstat -ano | findstr :${config.port}   → get PID\n` +
+        `   taskkill /PID <PID> /F\n`
+      );
+    } else {
+      console.error("Server error:", err);
+    }
+    process.exit(1);
   });
 
   // ── Graceful shutdown ───────────────────────────────────────

@@ -47,7 +47,9 @@ export const googleAuth = async (
       const parts = token.split('.');
       if (parts.length === 3) {
         try {
-          const decoded = Buffer.from(parts[1], 'base64url').toString('utf-8');
+          // 'base64url' is only supported in Node 18+; replace URL-safe chars first
+          const b64 = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
+          const decoded = Buffer.from(b64, 'base64').toString('utf-8');
           const payload = JSON.parse(decoded) as {
             email?: string;
             name?: string;

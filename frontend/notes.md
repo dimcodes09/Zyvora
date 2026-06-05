@@ -7,6 +7,8 @@
 npx ngrok http 3000
  to run grok
 
+ grok
+
  curl http://localhost:3000/ar 
  to verify
 

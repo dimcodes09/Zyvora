@@ -17,6 +17,9 @@ export interface IProduct extends Document {
 
   sellerId?: Types.ObjectId; // ✅ NEW (optional for old products)
 
+  // ─── ANALYTICS: unique user tracking ─────────────
+  uniqueViewers: Types.ObjectId[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +92,14 @@ const ProductSchema = new Schema<IProduct>(
     },
 
     tags: [String],
+
+    // ─── ANALYTICS: unique user tracking ─────────────
+    uniqueViewers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
