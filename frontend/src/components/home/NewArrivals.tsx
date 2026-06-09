@@ -304,7 +304,7 @@ export default function NewArrivals() {
               }}
             >
               <video
-                src="/him.mp4"
+                src="https://res.cloudinary.com/dwdrmdrdn/video/upload/v1781016093/him_zgchnr.mp4"
                 autoPlay
                 muted
                 loop
