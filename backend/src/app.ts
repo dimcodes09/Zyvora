@@ -17,27 +17,29 @@ import orderRoutes from './routes/orderRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
-
-// ✅ NEW
 import hamperRoutes from './routes/hamperRoutes.js';
-import sellerRoutes from "./routes/sellerRoutes.js";
-// In backend/src/app.ts — add alongside your existing routes
-import gamificationRoutes from "./routes/gamification.routes.js";
-import giftRoutes from "./routes/giftRoutes.js";
-import supportRoutes from "./routes/supportRoutes.js";
+import sellerRoutes from './routes/sellerRoutes.js';
+import gamificationRoutes from './routes/gamification.routes.js';
+import giftRoutes from './routes/giftRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 
 const app: Application = express();
+
+// ─── CORS ─────────────────────────────────────────────────────
 
 const allowedOrigins = new Set(
   [
     config.clientUrl,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    // Production Vercel deployments
-    "https://zyvoras.vercel.app",
-    "https://www.zyvoras.vercel.app",
-    "https://zyvora-livid.vercel.app",
-    "https://www.zyvora-livid.vercel.app",
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    // Production
+    'https://zyvora-phi.vercel.app',
+    'https://www.zyvora-phi.vercel.app',
+    // Legacy/preview deployments
+    'https://zyvoras.vercel.app',
+    'https://www.zyvoras.vercel.app',
+    'https://zyvora-livid.vercel.app',
+    'https://www.zyvora-livid.vercel.app',
     process.env.PUBLIC_CLIENT_URL,
     process.env.NGROK_URL,
   ].filter((origin): origin is string => Boolean(origin))
@@ -67,8 +69,8 @@ app.use(
       callback(new Error(`CORS blocked origin: ${origin}`));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -83,7 +85,6 @@ app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // ─── RATE LIMITERS ───────────────────────────────────────────
 
-// Strict limiter (writes)
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.max,
@@ -93,7 +94,6 @@ const limiter = rateLimit({
   },
 });
 
-// Product read limiter
 const productReadLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: 500,
@@ -107,34 +107,23 @@ const productReadLimiter = rateLimit({
 app.use('/api/products', productReadLimiter);
 app.use('/api/cart', limiter);
 app.use('/api/orders', limiter);
-
-// ✅ (OPTIONAL but recommended)
 app.use('/api/hamper', limiter);
 
 // ─── Routes ───────────────────────────────────────────────────
 
 app.use('/api/payments', paymentRoutes);
 app.use('/api/health', healthRoutes);
-
-// Auth (no limiter)
 app.use('/api/auth', authRoutes);
-
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/ai', aiRoutes);
-
-// ✅ NEW HAMPPER ROUTE
 app.use('/api/hamper', hamperRoutes);
-
-app.use("/api/seller", sellerRoutes);
-
-app.use("/api/user", gamificationRoutes);
-
-app.use("/api/gift", giftRoutes);
-app.use("/api/support", supportRoutes);
-
+app.use('/api/seller', sellerRoutes);
+app.use('/api/user', gamificationRoutes);
+app.use('/api/gift', giftRoutes);
+app.use('/api/support', supportRoutes);
 
 // ─── Error Handling ───────────────────────────────────────────
 app.use(notFound);

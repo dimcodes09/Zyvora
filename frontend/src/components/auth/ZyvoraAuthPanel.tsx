@@ -432,7 +432,16 @@ export default function ZyvoraAuthPanel({ mode }: { mode: AuthMode }) {
               <button
                 type="button"
                 id="google-signin-btn"
-                onClick={() => handleGoogleLogin()}
+                onClick={() => {
+                  const hasClientId =
+                    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID &&
+                    !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID.includes("placeholder");
+                  if (!hasClientId) {
+                    setGoogleError("Google Sign-In is not configured on this deployment.");
+                    return;
+                  }
+                  handleGoogleLogin();
+                }}
                 disabled={googleLoading || customerLoading}
                 className="flex h-14 w-full items-center justify-center gap-3 border border-rose-100 bg-white text-sm font-bold text-[#3D2A2D] shadow-sm transition hover:border-[#C97B84] hover:bg-[#FDF8F5] hover:shadow-md disabled:opacity-60"
               >
