@@ -33,8 +33,8 @@ const allowedOrigins = new Set(
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     // Production
-    'https://zyvora-phi.vercel.app',
-    'https://www.zyvora-phi.vercel.app',
+    'https://zyvora-hvot.vercel.app',
+    'https://www.zyvora-hvot.vercel.app',
     // Legacy/preview deployments
     'https://zyvoras.vercel.app',
     'https://www.zyvoras.vercel.app',
